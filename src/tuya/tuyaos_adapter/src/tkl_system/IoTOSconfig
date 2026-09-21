@@ -1,0 +1,46 @@
+# Ktuyaconf
+
+comment "TUYAOS kernel configure"
+config OPERATING_SYSTEM
+    int "OPERATING_SYSTEM: set the operation system type"
+    range 0 120
+    default 100
+    ---help---
+    	0	   SYSTEM_SMALL_MEMORY_BEGIN
+    	1	   SYSTEM_REALTEK8710_1M
+    	2	   SYSTEM_REALTEK8710_2M
+    	3	   SYSTEM_NON_OS
+        98     SYSTEM_FREERTOS                 
+        99     SYSTEM_SMALL_MEMORY_END         
+        100    SYSTEM_LINUX                    
+        120    SYSTEM_LITEOS  
+        
+config LITTLE_END
+	int "LITTLE_END: little end mode"
+    range 0 1
+    default 1
+
+config ENABLE_FILE_SYSTEM
+	bool "ENABLE_FILE_SYSTEM: support file system"
+    default y
+
+config TKL_SYSTEM_TEST_ENABLE
+        bool "ENABLE SYSTEM TKL TEST"
+        default n
+
+config ENABLE_GET_FREE_HEAP
+        bool "ENABLE SYSTEM GET FREE HEAP"
+	default n
+
+config ENABLE_PRIORITY_SCHED
+	bool "ENABLE_PRIORITY_SCHED"
+	default  n
+
+config ENABLE_THREAD_STACK_SIZE
+	bool "ENABLE_THREAD_STACK_SIZE"
+	default  n
+
+config ENABLE_LOG_OUTPUT_FORMAT
+	bool "ENABLE_LOG_OUTPUT_FORMAT"
+	default  n
+

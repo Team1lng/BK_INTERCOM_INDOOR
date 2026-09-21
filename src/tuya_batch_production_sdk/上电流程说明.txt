@@ -1,0 +1,14 @@
+关于tuya批量生产，uuid和key烧录的说明：
+	1.上电：先检查/etc/config/tuya_key/xxxx-xx-xx.conf是否有合法的文件
+	2.有合法的文件，正常注册tuya sdk，并且进入系统.
+	3.没有合法的文件，并且没有/mnt/tuya_key/xxxx-xx-xx.xls文件，不注册tuya_sdk，并且进入系统
+	4.没有合法的文件 ，并且有/mnt/tuya_key/xxxx-xx-xx.xls文件，弹出交互界面，用户输入序列号（1-最大生产数量）,
+重新创建uuid和key,并且保存到/etc/config/tuya_key/xxxx-xx-xx.conf。(防止员工输入错误，建议输入两次序列号相同的情况下，才创建uuid和key)。
+	
+	备注：xxxx-xx-xx(代表生产年月日)；
+
+接口说明：
+	tuya_uuid_and_key.c:读取tuya信息的相关逻辑
+	tuya_uuid_and_key.h：接口外部调用
+	include/libxls ：解析xls库相关的头文件
+	lib/xls：解析xls库相关的库源码,加入到cmake或者makefile中即可，另外包括编译好37d(37e应该可以直接使用)的库文件

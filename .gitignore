@@ -1,0 +1,18 @@
+# 压缩包（防止超大文件推送失败）
+*.zip
+*.ZIP
+
+# 编译产物与二进制文件
+*.bin
+*.sqsh4
+*.a
+*.so
+CMakeFiles/
+build/
+output/
+*.dir/
+
+# 临时缓存文件
+*.cache
+*.depend
+*.o

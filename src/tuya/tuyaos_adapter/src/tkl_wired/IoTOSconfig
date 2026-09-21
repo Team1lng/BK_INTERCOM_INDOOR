@@ -1,0 +1,8 @@
+
+menu "TY TKL Wired"
+
+config TY_TKL_WIRED_TEST
+    bool "TKL Wired Test"
+    default y
+
+endmenu

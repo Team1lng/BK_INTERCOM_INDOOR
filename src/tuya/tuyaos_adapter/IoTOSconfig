@@ -1,0 +1,115 @@
+menu "TY Platform TKL Configure"
+
+config ENABLE_SYS_LOG
+	bool "enable sys log"
+	default n
+
+config ENABLE_TKL_UTILS
+	bool "enable tkl utils"
+	depends on ENABLE_SYS_LOG
+	default n
+
+
+config ENABLE_TKL_ADC
+	bool "enable tkl adc"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config ENABLE_TKL_SYSTEM
+	bool "enable tkl system"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config ENABLE_TKL_BUS
+	bool "enable tkl bus"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config ENABLE_TKL_WATCHDOG
+	bool "enable tkl watchdog"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config ENABLE_TKL_INPUT_EVENT
+	bool "enable tkl intput event"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config  ENABLE_TKL_IMU
+	bool "enable tkl imu"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config  ENABLE_TKL_IR
+	bool "enable tkl ir"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config  ENABLE_TKL_MOTOR
+	bool "enable tkl motor"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config  ENABLE_TKL_SENSOR
+	bool "enable tkl sensor"
+	depends on ENABLE_SYS_LOG
+	default n
+
+config ENABLE_TKL_GPIO
+	bool "enable tkl gpio"
+	depends on ENABLE_SYS_LOG && ENABLE_TKL_UTILS
+	default n
+
+config ENABLE_TKL_NETWORK_CONFIG
+	bool "enable tkl network config"
+	depends on ENABLE_SYS_LOG && ENABLE_TKL_UTILS
+	default n
+
+
+config ENABLE_TKL_MEDIA
+	bool "enable tkl media"
+	default n
+
+config ENABLE_TKL_CELLULAR
+	bool "enable tkl cellular"
+	default n
+
+
+config ENABLE_TKL_DISPLAY
+	bool "enable tkl display"
+	default n
+
+config ENABLE_TKL_WIFI
+	bool "enable tkl wifi"
+	default n
+
+config ENABLE_TKL_WIRED
+	bool "enable tkl wired"
+	default n
+
+
+config ENABLE_TKL_BLUETOOTH
+	bool "enable tkl bluetooth"
+	default n
+
+config ENABLE_TKL_RTC
+	bool "enable tkl rtc"
+	default n
+
+config ENABLE_NVRAM
+	bool "enable nvram"
+	default n
+
+config ENABLE_BSP_VERIFY
+	bool "enable bsp verify"
+	default n
+
+config ENABLE_SWUPGRADE_UNPACK
+        bool "enabele swupgrade_unpack"
+	default n
+
+config  ENABLE_TKL_BASE
+        bool "enable tkl base"
+        default n
+
+endmenu
