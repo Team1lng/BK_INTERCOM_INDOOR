@@ -84,3 +84,5 @@ Thumbs.db
 ipc_camera/
 net_camera/
 net_indoor/
+# SAT系列固件包
+SAT_*
