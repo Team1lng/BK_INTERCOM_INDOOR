@@ -86,3 +86,17 @@ net_camera/
 net_indoor/
 # SAT系列固件包
 SAT_*
+# 大写后缀固件
+*.BIN
+# SAT系列整机固件包
+SAT_*
+# SAT系列整机固件包
+SAT_*
+
+# 字体文件
+*.ttf
+# SAT整机固件包
+SAT_*
+
+# 所有字体文件
+*.ttf
