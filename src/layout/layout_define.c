@@ -3,6 +3,7 @@
 #include "ak_thread.h"
 #include "user_data.h"
 #include "tuya_uuid_and_key.h"
+#include "tuya_sdk.h"
 
 #define OS_EVENT_NUM_MAX 32
 
@@ -309,6 +310,7 @@ const char *multi_lingual[STR_TOTAL][LANGUAGE_TOTAL] =
 		{"Door 2 version", "门口机2发布日期", "Tür 2 Version", "גרסת דלת 2", "Wersja drzwi 2", "Versão Porta 2", "Versión de la puerta 2", "Version platine 2", "玄関ドアフォン2バージョン", "Versione porta 2"},
 		{"Release date", "发布日期", "Datum aktivieren", "תאריך הוצאה", "Data wydania", "Data de lançamento", "Fecha de lanzamiento", "Evoya date ", "ソフトウェア公開日", "Data di rilascio"},
 		{"SD size", "SD卡容量", "Kapazität der SD-Karte", "גודל SD", "Pojemność karty SD", "Tamanho do SD", "Tamaño SD", "Capacité SD", "SDカード容量", "Dimensione SD"},
+		{"Tuya ID", "涂鸦ID", "Tuya ID", "Tuya ID", "Tuya ID", "Tuya ID", "Tuya ID", "Tuya ID", "Tuya ID", "Tuya ID"},
 		{"Get Tuya ID", "涂鸦ID读取", "Tuya ID holen ", "קבל מזהה מ Smartvill", "Odczyt Tuya ID", "Obtenha tuya id", "Obtener Tuya ID", "Identifiant Tuya", "Tuya IDの取得", "Ottieni l'ID Tuya"},
 		{"Replace ?", "是否替换", "Ersetzen ?", " החלף ?", "Zastępować ?", "Substituir ?", "Reemplazar ?", "Remplacer ?", "現在のIDと置き換えますか?", "Sostituire ?"},
 		{"No Tuya files", "无涂鸦文件", "Keine Tuya-Dateien", "אין קבצים באפליקצית Smartvil", "Brak plików Tuya", "Sem ficheiros Tuya", "No hay archivos tuya", "Aucun fichier Tuya", "Tuyaファイルなし ", "Nessun file Tuya"},
@@ -872,6 +874,12 @@ bool tuya_uuid_file_read(void)
 // 	back_logo_task_t = lv_task_create(back_logo_task, 3000, LV_TASK_PRIO_HIGH, NULL);
 // }
 
+static void feed_watchdog_task(lv_task_t *t)
+{
+	extern void watch_dog_feed(void);
+	watch_dog_feed();
+}
+
 void leo_api_init(void)
 {
 	lv_os_event_task_init();
@@ -921,10 +929,11 @@ void leo_api_init(void)
 	tuya_language_total_get(LANGUAGE_TOTAL);
 	tuya_set_current_language(user_data_get()->language.index);
 
-	extern void tuya_language_init(char ***first_row_str);
+	// extern void tuya_language_init(char ***first_row_str);
+	extern void tuya_language_init_with_param(char ***first_row_str);
 	if (lang_xls_import_success_flag)
 	{
-		tuya_language_init(lang_xls_a_row_str_get(STR_TUYA_CURR_DOOR1));
+		tuya_language_init_with_param(lang_xls_a_row_str_get(STR_TUYA_CURR_DOOR1));
 	}
 #ifdef BCOM_OID_VERSION
 	else
@@ -948,7 +957,16 @@ void leo_api_init(void)
 		if (tuya_uuid_etc_exist_check() && tuya_conf_uuid_etc_read(&(user_data_get()->tuya_info)) && wifi_usb_module_enable())
 		{
 			printf("IPC_APP_PID :%s tuya_uuid :%s           tuya_key:%s  \n", IPC_APP_PID, user_data_get()->tuya_info.tuya_uuid, user_data_get()->tuya_info.tuya_key);
-			tuya_wifi_sdk_init(IPC_APP_PID, user_data_get()->tuya_info.tuya_uuid, user_data_get()->tuya_info.tuya_key);
+			tuya_init_config_t tuya_cfg;
+			memset(&tuya_cfg, 0, sizeof(tuya_cfg));
+			strncpy(tuya_cfg.pid, IPC_APP_PID, sizeof(tuya_cfg.pid));
+			strncpy(tuya_cfg.uuid, user_data_get()->tuya_info.tuya_uuid, sizeof(tuya_cfg.uuid));
+			strncpy(tuya_cfg.key, user_data_get()->tuya_info.tuya_key, sizeof(tuya_cfg.key));
+			strncpy(tuya_cfg.ver, IPC_APP_VERSION, sizeof(tuya_cfg.ver));
+			strncpy(tuya_cfg.net_dev, user_data_get()->pairing_mode == WIRED_NET ? WIRED_DEV : WLAN_DEV, sizeof(tuya_cfg.net_dev));
+			strncpy(tuya_cfg.cache_dir, TUYA_CACHE_PATH, sizeof(tuya_cfg.cache_dir));
+			strncpy(tuya_cfg.sd_dir, SD_BASE_PATH2, sizeof(tuya_cfg.sd_dir));
+			tuya_sdk_init(&tuya_cfg);
 		}
 	}
 
@@ -956,6 +974,9 @@ void leo_api_init(void)
 	// goto_logo_display();
 	// extern void SD_card_space_clear(void);
 	// SD_card_space_clear();
+	extern void watchdog_open(void);
+	watchdog_open();
+	lv_task_ready(lv_task_create(feed_watchdog_task, 1000, LV_TASK_PRIO_HIGHEST, NULL));
 	monitor_channel_set(MON_CH_NONE);
 	goto_layout(pLAYOUT(standby));
 }
@@ -1602,7 +1623,7 @@ bool tuya_monitor_light_event(bool state)
 	return true;
 }
 
-bool tuya_work_mode_switch_event(UINT_T mode)
+bool tuya_work_mode_switch_event(int mode)
 {
 	printf("tuya_work_mode_switch_event ==========>>>\n\r");
 	lv_event_info *node = lv_os_event_queue_node_new();
@@ -1837,8 +1858,8 @@ void tuya_icon_display(lv_obj_t *parent, int *icon_offset, unsigned long arg1, u
 	lv_obj_t *tuya_icon = NULL;
 	if ((tuya_icon = lv_obj_get_child_form_id(parent, 98)) == NULL)
 	{
-		Debug("tuya_ipc_register_status_get():%d\n", tuya_ipc_register_status_get());
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED && (user_data_get()->wifi.wifi_connect_flag || user_data_get()->pairing_mode == WIRED_NET))
+		// Debug("tuya_ipc_register_status_get():%d\n", tuya_ipc_register_status_get());
+		if (tuya_online_status_get() == true && (user_data_get()->wifi.wifi_connect_flag || user_data_get()->pairing_mode == WIRED_NET))
 		{
 			tuya_icon = lv_img_create(parent, NULL);
 			lv_obj_set_id(tuya_icon, 98);
@@ -1851,8 +1872,8 @@ void tuya_icon_display(lv_obj_t *parent, int *icon_offset, unsigned long arg1, u
 	}
 	else
 	{
-		Debug("tuya_ipc_register_status_get():%d,%ld,%d\n", tuya_ipc_register_status_get(), arg1, user_data_get()->wifi.wifi_connect_flag);
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED && user_data_get()->wifi.wifi_connect_flag && arg1)
+		//Debug("tuya_ipc_register_status_get():%d,%ld,%d\n", tuya_ipc_register_status_get(), arg1, user_data_get()->wifi.wifi_connect_flag);
+		if (tuya_online_status_get() == true && user_data_get()->wifi.wifi_connect_flag && arg1)
 		{
 			lv_obj_set_pos(tuya_icon, ICON_OFFSET, 32);
 			lv_obj_set_hidden(tuya_icon, false);
@@ -2256,7 +2277,7 @@ static lv_task_t *tuya_ungate2_task_t = NULL;
 static void tuya_ungate2_task(lv_task_t *task_t)
 {
 	unlock_gpio_set(0);
-	tuya_dp_232_response_outdoor_gate1(false);
+	tuya_dp_244_response_indoor_gate2(false);
 	if (tuya_ungate2_task_t)
 	{
 		lv_task_del(tuya_ungate2_task_t);
@@ -2271,7 +2292,7 @@ void tuya_ungate2_start(void)
 		return;
 	}
 	unlock_gpio_set(1);
-	tuya_dp_232_response_outdoor_gate1(true);
+	tuya_dp_244_response_indoor_gate2(true);
 	tuya_ungate2_task_t = lv_task_create(tuya_ungate2_task, user_data_get()->other.unlock_time * 1000, LV_TASK_PRIO_HIGH, NULL);
 }
 
@@ -2306,7 +2327,7 @@ void tuya_ungate1_start(void)
 static lv_task_t *tuya_unlock_task_t = NULL;
 static void tuya_unlock_task(lv_task_t *task_t)
 {
-	tuya_dp_148_response_accessory_lock(false);
+	tuya_dp_234_response_outdoor_lock(false);
 	if (tuya_unlock_task_t)
 	{
 		lv_task_del(tuya_unlock_task_t);
@@ -2320,7 +2341,7 @@ void tuya_unlock_start(void)
 	{
 		return;
 	}
-	tuya_dp_148_response_accessory_lock(true);
+	tuya_dp_234_response_outdoor_lock(true);
 	network_cmd_data data;
 	data.device = monitor_channel_get() == MON_CH_DOOR_1 ? DEVICE_OUTDOOR_1 : monitor_channel_get() == MON_CH_DOOR_2 ? DEVICE_OUTDOOR_2
 																													 : DEVICE_UNKONW;
@@ -2560,4 +2581,23 @@ void network_devices_enable_init(void)
 	device_enable_state_set(DEVICE_CCTV_2, &(user_data_get()->camera2.enable));
 	device_cctv_url_set(DEVICE_CCTV_1, user_data_get()->camera1.url);
 	device_cctv_url_set(DEVICE_CCTV_2, user_data_get()->camera2.url);
+}
+
+int tuya_channel_valid_report_impl(void)
+{
+	tuya_ch_info_t info[MON_CH_TOTAL];
+	int ch = monitor_channel_get();
+	int count = 0;
+	memset(info, 0, sizeof(info));
+
+	for(int i = MON_CH_DOOR_1; i < MON_CH_TOTAL; i++)
+	{
+		if(monitor_valid_channel_check(i))
+		{
+			info[count].ch = i;
+			info[count].name = (ch == i ? text_str(STR_TUYA_CURR_DOOR1 + (i - MON_CH_DOOR_1) * 2) : text_str(STR_TUYA_CURR_DOOR1 + (i - MON_CH_DOOR_1) * 2 + 1));
+			count++;
+		}
+	}
+	return tuya_channel_report(ch, info, count);
 }

@@ -190,7 +190,7 @@ static void tuya_event_extern_proc(unsigned long arg1, unsigned long arg2)
     /* 截屏 */
     case TUYA_EVENT_SCREENSHOT:
     {
-        extern int tuya_dp_236_response_screenshot(BOOL_T state);
+        extern int tuya_dp_236_response_screenshot(bool state);
         extern void screen_capture();
         screen_capture();
         tuya_dp_236_response_screenshot(false);
@@ -313,7 +313,7 @@ static void tuya_event_inside_proc(unsigned long arg1, unsigned long arg2)
     /* 截屏 */
     case TUYA_EVENT_SCREENSHOT:
     {
-        extern int tuya_dp_236_response_screenshot(BOOL_T state);
+        extern int tuya_dp_236_response_screenshot(bool state);
         extern void screen_capture();
         screen_capture();
         tuya_dp_236_response_screenshot(false);
@@ -352,7 +352,7 @@ static void monitor_auto_shoot_task(struct _lv_task_t *task_t)
         door_info *door = monitor_channel_get() == MON_CH_DOOR_1 ? &user_data_get()->door1 : &user_data_get()->door2;
         if (door->record_mode)
         {
-            if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+            if (tuya_online_status_get() == true)
             {
                 extern bool send_tuya_record(char record_mode);
                 send_tuya_record(REC_MODE_TUYA);
@@ -441,7 +441,7 @@ static void monitor_call_inside_func(unsigned long arg1, unsigned long arg2)
 
     if (!is_sdcard_insert())
     {
-        if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+        if (tuya_online_status_get() == true)
         {
             extern bool send_tuya_record(char record_mode);
             send_tuya_record(REC_MODE_TUYA);
@@ -654,7 +654,7 @@ static void monitor_lock_task(lv_task_t *task_t)
         lv_obj_set_style_local_pattern_image(obj, LV_OBJ_PART_MAIN, LV_STATE_PRESSED, &info);
         lv_obj_clear_state(obj, LV_STATE_FOCUSED);
     }
-    tuya_dp_148_response_accessory_lock(false);
+    tuya_dp_234_response_outdoor_lock(false);
 }
 static void monitor_lock_btn_up(lv_obj_t *obj)
 {
@@ -676,7 +676,7 @@ static void monitor_lock_btn_up(lv_obj_t *obj)
         data.arg1 = monitor_channel_get() == MON_CH_DOOR_2 ? user_data_get()->door2.unlock_delay : user_data_get()->door1.unlock_delay;
         data.arg2 = 1 | user_data_get()->language.index << 2 | user_data_get()->other.unlock_hint << 7;
         network_send_cmd_data(&data);
-        tuya_dp_148_response_accessory_lock(true);
+        tuya_dp_234_response_outdoor_lock(true);
         unlock_task_t = lv_task_create(monitor_lock_task, (monitor_channel_get() == MON_CH_DOOR_2 ? user_data_get()->door2.unlock_delay : user_data_get()->door1.unlock_delay) * 1000, LV_TASK_PRIO_HIGH, NULL);
     }
 }

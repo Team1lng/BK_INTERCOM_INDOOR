@@ -39,16 +39,40 @@ add_subdirectory(lv_drivers)  #添加目录 lv_drivers
 add_subdirectory(lv_qrcode)  #添加目录 lv_qrcode
 add_subdirectory(api)  #添加目录 api
 add_subdirectory(tuya_batch_production_sdk)  #添加目录 tuya_batch_production_sdk
-add_subdirectory(iniparser)  
+add_subdirectory(tuya)        #添加目录 tuya
+add_subdirectory(iniparser)
 # add_subdirectory(sqlite)  
 
 include_directories(./include/anyka)  
 include_directories(./include/api)  
-include_directories(./include/api/video) 
-include_directories(./include/freetype)  
-include_directories(./include/libmad)  
+include_directories(./include/api/video)
+include_directories(./include/freetype)
+include_directories(./include/libmad)
 include_directories(./include/tuya)
 include_directories(./include/g711)
+include_directories(./tuya/)
+include_directories(./tuya/include/base/include/)
+include_directories(./tuya/include/components/tal_system/include/)
+include_directories(./tuya/include/components/tal_system_service/include/)
+include_directories(./tuya/include/components/tal_security/include/)
+include_directories(./tuya/include/components/svc_api_ipc/include/)
+include_directories(./tuya/include/components/svc_wifi/include/)
+include_directories(./tuya/include/components/base_media/include/)
+include_directories(./tuya/include/components/base_media/include/codec/)
+include_directories(./tuya/tuyaos_adapter/include/utilities/include/)
+include_directories(./tuya/tuyaos_adapter/include/security/)
+include_directories(./tuya/app/app_main/include/)
+include_directories(./tuya/tuyaos_adapter/include/system/)
+include_directories(./tuya/tuyaos_adapter/include/wifi/)
+include_directories(./tuya/tuyaos_adapter/include/media/)
+include_directories(./tuya/tuyaos_adapter/include/storage/)
+include_directories(./tuya/include/components/svc_devos/include/)
+include_directories(./tuya/include/components/lib_cJSON/include/)
+include_directories(./tuya/include/components/svc_netmgr/include/)
+include_directories(./tuya/include/components/svc_ring_buffer/include/)
+include_directories(./tuya/include/components/svc_streaming_p2p/include/)
+include_directories(./tuya/include/components/svc_ipc_core/include/)
+include_directories(./tuya/include/components/svc_cloud_storage/include/)
 
 include_directories(./include/live555/BasicUsageEnvironment/include)  
 include_directories(./include/live555/groupsock/include)  
@@ -78,6 +102,7 @@ set(VAR ${VAR} lv_qrcode_lib)
 set(VAR ${VAR} lvgl_lib)
 set(VAR ${VAR} lv_drivers_lib)
 set(VAR ${VAR} leo_api_lib)
+set(VAR ${VAR} tuya)
 set(VAR ${VAR} iniparser)
 set(VAR ${VAR} xls)
 set(ANYKA_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lib/anyka)
@@ -145,12 +170,9 @@ ${LIVE555_PATH}/libliveMedia.a
 ${LIVE555_PATH}/libUsageEnvironment.a
 -Wl,--end-group)
 
-target_link_libraries(${leo_proj}  -Wl,--start-group 
-#${ANYKA_PATH}/../tuya/libtuya_ipc.a)
-#target_link_libraries(${leo_proj} ${ANYKA_PATH}/../tuya/libmbedtls.a)
-#target_link_libraries(${leo_proj} ${ANYKA_PATH}/../../api/libleo_api_lib.a)
-${ANYKA_PATH}/../tuya/libtuya_ipc.a
-${ANYKA_PATH}/../tuya/libmbedtls.a
+target_link_libraries(${leo_proj}  -Wl,--start-group
+tuya
+${CMAKE_CURRENT_SOURCE_DIR}/tuya/libs/libtuyaos.a
 ${ANYKA_PATH}/../../api/libleo_api_lib.a
 ${ANYKA_PATH}/../iconv/libiconv.a
 ${CMAKE_CURRENT_SOURCE_DIR}/tuya_batch_production_sdk/xls/libxls.a

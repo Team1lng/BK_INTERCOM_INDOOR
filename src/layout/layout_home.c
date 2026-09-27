@@ -334,7 +334,7 @@ void home_Model_btn_switch(void)
 #ifdef PUBLIC_VERSION
 static void home_Model_btn_up(lv_obj_t *obj)
 {
-	extern void set_tuya_work_mode(UINT_T mode);
+	extern void set_tuya_work_mode(int mode);
 	home_Model_btn_switch();
 	set_tuya_work_mode(user_data_get()->other.model);
 	// int x = tuya_dp_189_response_work_mode(user_data_get()->other.model);
@@ -540,7 +540,7 @@ static void home_ungate2_task(lv_task_t *task_t)
 	ungate2_task_t = NULL;
 	home_Gate2_flag = 0;
 	// 关锁
-	tuya_dp_233_response_gate2(false);
+	tuya_dp_244_response_indoor_gate2(false);
 	unlock_gpio_set(0);
 }
 
@@ -566,7 +566,7 @@ void home_gate2_control(void)
 		// if (user_data_get()->other.model != MUTE_PATTERN)
 		// open_door_ring_play(80);
 
-		tuya_dp_233_response_gate2(true);
+		tuya_dp_244_response_indoor_gate2(true);
 		ungate2_task_t = lv_task_create(home_ungate2_task, user_data_get()->other.unlock_time * 1000, LV_TASK_PRIO_HIGH, NULL);
 		home_Gate2_flag = 1;
 	}

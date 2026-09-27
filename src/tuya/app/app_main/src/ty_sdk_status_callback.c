@@ -10,7 +10,6 @@
 #include "tuya_iot_config.h"
 #include "tuya_ipc_api.h"
 #include "ty_sdk_common.h"
-#include "tuya_online_status_policy.h"
 
 STATIC INT_T s_mqtt_status = 0;
 STATIC INT_T s_first_active = 0;
@@ -51,8 +50,6 @@ STATIC VOID __on_status_offline(VOID *arg){
     {
         s_mqtt_status = 0;
     }
-    extern bool dev_info_status_event_push(unsigned long arg1, unsigned long arg2);
-    dev_info_status_event_push(1, 0);
     return;
 }
 
@@ -168,5 +165,9 @@ const char *tuya_qrcode_shorturl_get(void)
 
 bool tuya_online_status_get(void)
 {
-    return tuya_online_status_from_callback(s_mqtt_status);
+    if (s_mqtt_status == 0)
+    {
+        return false;
+    }
+    return tuya_ipc_get_mqtt_status() ? true : false;
 }

@@ -5,6 +5,14 @@
 #include <time.h>
 #include "./include/components/base_media/include/codec/tuya_g711_utils.h"
 
+#ifndef IPC_APP_VERSION
+#define IPC_APP_VERSION "2.1.4"
+#endif
+
+#ifndef IPC_APP_PID
+#define IPC_APP_PID "xxxxxx"
+#endif
+
 #define STREAM_CLIENT_MAX 4
 
 #define LOG_LEVEL_INFO 0
@@ -70,9 +78,9 @@ typedef enum
 
 typedef enum
 {
-    TUYA_DOOR_LOCK1 = 0,
-    TUYA_DOOR_LOCK2,
-    TUYA_INDOOR_LOCK
+    TUYA_DOOR_LOCK1 = 0,  // DP 148 主锁
+    TUYA_DOOR_LOCK2,      // DP 232 Gate1
+    TUYA_DOOR_LOCK3       // DP 243 Gate2/室内机
 } tuya_door_lock_t;
 
 typedef enum
@@ -218,6 +226,17 @@ static inline int tuya_g711u_encode(unsigned char *in_data, unsigned int in_len,
  *******************************************************************/
 int tuya_door_lock_report(tuya_door_lock_t lock, bool state);
 /*******************************************************************
+ * @brief  : 兼容 public UI 的锁与功能状态上报接口
+ *******************************************************************/
+int tuya_dp_138_response_light_switch(bool state);
+int tuya_dp_189_response_work_mode(unsigned int mode);
+int tuya_dp_234_response_outdoor_lock(bool state);
+int tuya_dp_232_response_outdoor_gate1(bool state);
+int tuya_dp_244_response_indoor_gate2(bool state);
+int tuya_dp_233_response_lock_support(void);
+int tuya_dp_235_response_device_active(void);
+int tuya_dp_236_response_screenshot(bool state);
+/*******************************************************************
  * @brief  : 获取tuya天气信息
  *******************************************************************/
 tuya_api_weather *tuya_weather_get(void);
@@ -265,5 +284,27 @@ void tuya_device_unbinding(void);
  * @brief  : 上报子版本，即门口机版本
  *******************************************************************/
 int tuya_sub_version_report(int channel, const char *version);
+
+/*******************************************************************
+ * @brief  : Stub functions for compatibility with application code
+ *******************************************************************/
+int tuya_wifi_sdk_init(const char *pid, const char *uuid, const char *authkey);
+void set_tuya_work_mode(int mode);
+bool is_tuya_sdk_inited(void);
+void tuya_set_current_language(int language);
+void tuya_language_total_get(int total);
+void tuya_language_init(void);
+int tuya_dp_148_response_accessory_lock(bool state);
+int tuya_dp_233_response_gate2(bool state);
+void tuya_network_dev_set(void *pairing_mode);
+void tuya_ipc_reconnect_wifi(void);
+char* tuya_qrcode_str_get(void);
+void tuya_current_channel_set(int channel);
+int tuya_switch_channel_upload_results(int result);
+void tuya_ipc_ring_buffer_video_release_data(void);
+int get_p2p_online_status(void);
+void ipc_app_sync_utc_time(void);
+void tuya_ota_upgrade_event(int event);
+void tuya_channel_valid_report(void);
 
 #endif

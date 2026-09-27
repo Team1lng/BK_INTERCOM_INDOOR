@@ -8,10 +8,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "string.h"
-#include "ak_common_graphics.h"
-#include "../../include/tuya/tuya_ipc_api.h"
-
+#include "leo_api.h"
 #include "ak_tde.h"
+#include "tuya_sdk.h"
 
 #define JPEG_WIDTH 1024
 #define JPEG_HEIGHT 600
@@ -121,7 +120,7 @@ static int jpeg_encode_open(int width, int heigh)
 
 static bool jpeg_stream_write_file(unsigned char *data, int size, const char *file_path)
 {
-	int fd = open(file_path, O_WRONLY | O_CREAT);
+	int fd = open(file_path, O_WRONLY | O_CREAT, 0644);
 	if (fd < 0)
 	{
 		return false;
@@ -177,8 +176,6 @@ static void *jpeg_record_task(void *arg)
 
 	int frame_size = JPEG_WIDTH * JPEG_HEIGHT * 3 / 2;
 	unsigned char *addres = video_raw_lcd_get(NULL);
-	// ak_mem_dma_alloc(MODULE_ID_VENC, frame_size);
-	extern IPC_REGISTER_STATUS tuya_ipc_register_status_get(void);
 	bool reslut = false;
 	do
 	{
@@ -196,7 +193,7 @@ static void *jpeg_record_task(void *arg)
 			printf("[%s:%d] encode frame open fail \n", __func__, __LINE__);
 			break;
 		}
-		
+
 		struct video_stream stream;
 		if (jpeg_encode_write_frame(hande_id, addres, frame_size, info->file_path, &stream) == false)
 		{
@@ -204,18 +201,21 @@ static void *jpeg_record_task(void *arg)
 			break;
 		}
 
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED && push_jpg_to_tuya_type != 0)
+		if (tuya_online_status_get() == true && push_jpg_to_tuya_type != 0)
 		{
-			if (is_online_tuya_cloud() == true)
+			push_jpg_to_tuya_type = 0;
+			// struct video_stream stream;
+			// if (ak_venc_encode_frame(hande_id, addres, frame_size, NULL, &stream) == 0)
 			{
-				push_jpg_to_tuya_type = 0;
-				// struct video_stream stream;
-				// if (ak_venc_encode_frame(hande_id, addres, frame_size, NULL, &stream) == 0)
+				if(info->recode_mode != REC_MODE_MOTION)
 				{
-					if(info->recode_mode != REC_MODE_MOTION)
-						tuya_ipc_notify_door_bell_press((char *)stream.data, stream.len, NOTIFICATION_CONTENT_JPEG);
-					else
-						tuya_ipc_notify_motion_detect((char *)stream.data, stream.len, NOTIFICATION_CONTENT_JPEG);
+					tuya_notify_call_event(0, stream.data, stream.len);
+					tuya_cloud_storage_start();
+				}
+				else
+				{
+					tuya_notify_motion_event(0, stream.data, stream.len);
+					tuya_cloud_storage_start();
 				}
 			}
 		}
@@ -336,9 +336,15 @@ static void *sent_tuya_record_task(void *arg)
 		{
 			printf("@@@@@@@@@@@@@@@@@@@>>>>>>>>>>>>>>:%s %d:\n", __func__,__LINE__);
 			if(*mode != REC_MODE_MOTION)
-				tuya_ipc_notify_door_bell_press((char *)stream.data, stream.len, NOTIFICATION_CONTENT_JPEG);
+			{
+				tuya_notify_call_event(0, stream.data, stream.len);
+				tuya_cloud_storage_start();
+			}
 			else
-				tuya_ipc_notify_motion_detect((char *)stream.data, stream.len, NOTIFICATION_CONTENT_JPEG);
+			{
+				tuya_notify_motion_event(0, stream.data, stream.len);
+				tuya_cloud_storage_start();
+			}
 		}
 
 		ak_venc_release_stream(hande_id,&stream);

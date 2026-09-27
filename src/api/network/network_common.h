@@ -46,6 +46,7 @@ typedef enum
 typedef struct
 {
 	bool talk_busy;
+	int model;
 	int ver;
 	int Compile_year;
 	int Compile_mon;
@@ -97,6 +98,8 @@ typedef enum
 } network_family;
 
 #define COMMON_CMD_LEN 8
+
+#define OLD_OUTDOOR_MODEL 0xFF
 
 /*
  *	arg1: 1:查询ID状态
@@ -204,6 +207,8 @@ int setMacAddress(const char *interfaceName, const char *newMacAddress);
 network_device network_local_device_get(void);
 
 int get_outdoor_version(network_device ch);
+
+int get_outdoor_model_version(network_device ch, int *model, int *ver);
 
 bool get_outdoor_finerger_status(network_device ch);
 

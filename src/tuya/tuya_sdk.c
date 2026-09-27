@@ -19,29 +19,21 @@
 #include "ty_sdk_call.h"
 #include "tal_system.h"
 #include "tuya_sdk.h"
-#include "tuya_video_frame_type.h"
 #include "../include/anyka/ak_thread.h"
 #include "../include/anyka/ak_common.h"
 #include <stdatomic.h>
 #include "../layout/resource/rom.h"
 #include "ty_dp_define.h"
 #include "../api/network/network_common.h"
-#include "../include/api/video_perf_trace.h"
 
 /* ********************************************************************************************************************* */
 /* *************************************************涂鸦本地存储相关***************************************************** */
 /* ********************************************************************************************************************* */
 #define Debug_Lib (printf("\n\033[0;33;40m[***%s***]:%u\033[0m \t", __PRETTY_FUNCTION__, __LINE__), printf)
 
-extern unsigned long long os_get_ms(void);
-
 static sem_t upload_start;
 static atomic_int upload_enable = ATOMIC_VAR_INIT(0);
 static long int tuya_upload_count = 0;
-static video_perf_stats tuya_main_ring_perf_stats;
-static video_perf_stats tuya_sub_ring_perf_stats;
-static video_perf_stats tuya_ring_perf_stats;
-static unsigned long long tuya_ring_perf_last_trace_ms;
 
 void tuya_occupted_upload(void)
 {
@@ -192,6 +184,7 @@ static bool _tuya_api_weather_get(tuya_api_weather *nm)
 {
     if (tuya_online_status_get() == false)
     {
+        printf("mqtt is not off-line \n");
         return false;
     }
 
@@ -296,65 +289,11 @@ extern RING_BUFFER_USER_HANDLE_T s_ring_buffer_handles[E_IPC_STREAM_MAX];
 extern CHAR_T s_app_version[64];
 int tuya_realtime_video_put_frame(unsigned char *data, int size, unsigned long long pts)
 {
-    static unsigned long long last_trace_pts;
-    static unsigned long long last_missing_handle_trace_pts;
-    static unsigned long frame_count;
-    int main_ret;
-    int sub_ret;
-    MEDIA_FRAME_TYPE_E frame_type;
-    unsigned long long main_start_ms;
-    unsigned long long sub_start_ms;
-    unsigned long long now_ms;
-
     if (s_ring_buffer_handles[E_IPC_STREAM_VIDEO_MAIN] && s_ring_buffer_handles[E_IPC_STREAM_VIDEO_SUB])
     {
-        frame_type = tuya_h264_frame_type_get(data, size);
-        main_start_ms = os_get_ms();
-        main_ret = tuya_ipc_ring_buffer_append_data(s_ring_buffer_handles[E_IPC_STREAM_VIDEO_MAIN], data, size, frame_type, pts);
-        sub_start_ms = os_get_ms();
-        sub_ret = tuya_ipc_ring_buffer_append_data(s_ring_buffer_handles[E_IPC_STREAM_VIDEO_SUB], data, size, frame_type, pts);
-        now_ms = os_get_ms();
-        video_perf_stats_record(&tuya_main_ring_perf_stats, size, sub_start_ms - main_start_ms,
-                                main_ret, false, 0, 15);
-        video_perf_stats_record(&tuya_sub_ring_perf_stats, size, now_ms - sub_start_ms,
-                                sub_ret, false, 0, 15);
-        video_perf_stats_record(&tuya_ring_perf_stats, size * 2, now_ms - main_start_ms,
-                                main_ret != 0 ? main_ret : sub_ret, false, 0, 15);
-        frame_count++;
-
-        if ((last_trace_pts == 0) || (pts - last_trace_pts >= 5000))
-        {
-            Debug_Lib("[TUYA_VIDEO_TRACE] ring append: count=%lu size=%d nal=%u frame_type=%d main_ret=%d sub_ret=%d pts=%llu\n",
-                      frame_count, size, data[4] & 0x1f, frame_type, main_ret, sub_ret, pts);
-            last_trace_pts = pts;
-        }
-
-        if ((tuya_ring_perf_last_trace_ms == 0) ||
-            (now_ms - tuya_ring_perf_last_trace_ms >= 5000))
-        {
-            Debug_Lib("[TUYA_PERF_TRACE] tuya-ring: total calls=%lu bytes=%llu avg=%llums max=%llums slow=%lu fail=%lu | main avg=%llums max=%llums slow=%lu fail=%lu | sub avg=%llums max=%llums slow=%lu fail=%lu\n",
-                      tuya_ring_perf_stats.calls, tuya_ring_perf_stats.bytes,
-                      tuya_ring_perf_stats.calls ? tuya_ring_perf_stats.total_ms / tuya_ring_perf_stats.calls : 0,
-                      tuya_ring_perf_stats.max_ms, tuya_ring_perf_stats.slow_calls, tuya_ring_perf_stats.failures,
-                      tuya_main_ring_perf_stats.calls ? tuya_main_ring_perf_stats.total_ms / tuya_main_ring_perf_stats.calls : 0,
-                      tuya_main_ring_perf_stats.max_ms, tuya_main_ring_perf_stats.slow_calls, tuya_main_ring_perf_stats.failures,
-                      tuya_sub_ring_perf_stats.calls ? tuya_sub_ring_perf_stats.total_ms / tuya_sub_ring_perf_stats.calls : 0,
-                      tuya_sub_ring_perf_stats.max_ms, tuya_sub_ring_perf_stats.slow_calls, tuya_sub_ring_perf_stats.failures);
-            video_perf_stats_reset(&tuya_main_ring_perf_stats);
-            video_perf_stats_reset(&tuya_sub_ring_perf_stats);
-            video_perf_stats_reset(&tuya_ring_perf_stats);
-            tuya_ring_perf_last_trace_ms = now_ms;
-        }
-
-        return main_ret != 0 ? main_ret : sub_ret;
-    }
-
-    if ((last_missing_handle_trace_pts == 0) || (pts - last_missing_handle_trace_pts >= 5000))
-    {
-        Debug_Lib("[TUYA_VIDEO_TRACE] ring append skipped: main=%p sub=%p size=%d pts=%llu\n",
-                  (void *)s_ring_buffer_handles[E_IPC_STREAM_VIDEO_MAIN],
-                  (void *)s_ring_buffer_handles[E_IPC_STREAM_VIDEO_SUB], size, pts);
-        last_missing_handle_trace_pts = pts;
+        tuya_ipc_ring_buffer_append_data(s_ring_buffer_handles[E_IPC_STREAM_VIDEO_MAIN], data, size, (data[4] & 0x1f) == 0x01 ? E_VIDEO_PB_FRAME : E_VIDEO_I_FRAME, pts);
+        tuya_ipc_ring_buffer_append_data(s_ring_buffer_handles[E_IPC_STREAM_VIDEO_SUB], data, size, (data[4] & 0x1f) == 0x01 ? E_VIDEO_PB_FRAME : E_VIDEO_I_FRAME, pts);
+        return 0;
     }
     return -1;
 }
@@ -387,7 +326,7 @@ int tuya_notify_call_event(int ch, const uint8_t *jpeg_buf, int size)
     }
     tuya_ipc_notify_door_bell_press(jpeg_buf, size, NOTIFICATION_CONTENT_JPEG);
     tuya_ipc_dp_report(NULL, TUYA_DP_DOOR_BELL, PROP_STR, "tuya6", 1);
-    tuya_ipc_notify_alarm(jpeg_buf, size, NOTIFICATION_NAME_DOORBELL, TRUE, NULL);
+    tuya_ipc_notify_alarm(jpeg_buf, size, ch == 0 ? NOTIFICATION_NAME_PASSBY : NOTIFICATION_NAME_CAR, TRUE, NULL);
     return 0;
 }
 
@@ -435,18 +374,47 @@ void tuya_device_unbinding(void)
 
 int tuya_sub_version_report(int channel, const char *version)
 {
-    GW_ATTACH_ATTR_T attach_arr[1];
-    if (version)
+    GW_ATTACH_ATTR_T attach_attr = {0};
+
+    if (version != NULL && channel > 0)
     {
-        attach_arr->tp = DEV_ATTACH_MOD_1 + channel - 1;
-        strcpy(attach_arr->ver, version);
+        attach_attr.tp = DEV_ATTACH_MOD_1 + channel - 1;
+        snprintf(attach_attr.ver, sizeof(attach_attr.ver), "%s", version);
     }
     else
     {
-        attach_arr->tp = DEV_NM_ATH_SNGL;
-        strcpy(attach_arr->ver, s_app_version);
+        attach_attr.tp = DEV_NM_ATH_SNGL;
+        snprintf(attach_attr.ver, sizeof(attach_attr.ver), "%s", s_app_version);
     }
-    return tuya_iot_dev_update_attachs(CNTSOF(attach_arr), attach_arr);
+
+    OPERATE_RET ret = tuya_iot_dev_update_attachs(1, &attach_attr);
+    Debug_Lib("outdoor attach version report channel:%d version:%s ret:%d\n", attach_attr.tp, attach_attr.ver, ret);
+    return ret;
+}
+
+int tuya_dp_234_response_outdoor_lock(bool state)
+{
+    return tuya_door_lock_report(TUYA_DOOR_LOCK1, state);
+}
+
+int tuya_dp_232_response_outdoor_gate1(bool state)
+{
+    return tuya_door_lock_report(TUYA_DOOR_LOCK2, state);
+}
+
+int tuya_dp_244_response_indoor_gate2(bool state)
+{
+    return tuya_door_lock_report(TUYA_DOOR_LOCK3, state);
+}
+
+int tuya_dp_233_response_lock_support(void)
+{
+    return tuya_lock_support_report();
+}
+
+int tuya_dp_236_response_screenshot(bool state)
+{
+    return tuya_screenshot_report(state);
 }
 
 /* ********************************************************************************************************************* */
@@ -556,3 +524,118 @@ int tuya_sdk_init(const tuya_init_config_t *cfg)
     pthread_create(&tuya_ctx.tid, NULL, tuya_sdk_thread, &tuya_ctx);
     return 0;
 }
+
+/* ********************************************************************************************************************* */
+/* ********************************************Stub functions for compatibility******************************************** */
+/* ********************************************************************************************************************* */
+
+// These functions are called by the application but not fully implemented in tuya6 SDK
+// They are provided as stubs to allow linking to succeed
+
+int tuya_wifi_sdk_init(const char *pid, const char *uuid, const char *authkey)
+{
+    tuya_init_config_t cfg = {0};
+    strncpy(cfg.pid, pid, sizeof(cfg.pid) - 1);
+    strncpy(cfg.uuid, uuid, sizeof(cfg.uuid) - 1);
+    // Note: authkey field doesn't exist in tuya_init_config_t, ignoring it
+    return tuya_sdk_init(&cfg);
+}
+
+void set_tuya_work_mode(int mode)
+{
+    // Work mode setting - placeholder implementation
+    db_log_debug("set_tuya_work_mode: %d\n", mode);
+}
+
+bool is_tuya_sdk_inited(void)
+{
+    return tuya_ctx.runing;
+}
+
+void tuya_set_current_language(int language)
+{
+    db_log_debug("tuya_set_current_language: %d\n", language);
+}
+
+void tuya_language_total_get(int total)
+{
+    db_log_debug("tuya_language_total_get: %d\n", total);
+}
+
+void tuya_language_init(void)
+{
+    db_log_debug("tuya_language_init\n");
+}
+
+int tuya_dp_148_response_accessory_lock(bool state)
+{
+    db_log_debug("tuya_dp_148_response_accessory_lock: %d\n", state);
+    return 0;
+}
+
+int tuya_dp_233_response_gate2(bool state)
+{
+    db_log_debug("tuya_dp_233_response_gate2: %d\n", state);
+    return 0;
+}
+
+void tuya_network_dev_set(void *pairing_mode)
+{
+    db_log_debug("tuya_network_dev_set\n");
+}
+
+void tuya_ipc_reconnect_wifi(void)
+{
+    db_log_debug("tuya_ipc_reconnect_wifi\n");
+}
+
+char* tuya_qrcode_str_get(void)
+{
+    static char qrcode[256] = {0};
+    db_log_debug("tuya_qrcode_str_get\n");
+    return qrcode;
+}
+
+void tuya_current_channel_set(int channel)
+{
+    db_log_debug("tuya_current_channel_set: %d\n", channel);
+}
+
+int tuya_switch_channel_upload_results(int result)
+{
+    db_log_debug("tuya_switch_channel_upload_results: %d\n", result);
+    return 0;
+}
+
+void tuya_ipc_ring_buffer_video_release_data(void)
+{
+    db_log_debug("tuya_ipc_ring_buffer_video_release_data\n");
+}
+
+int get_p2p_online_status(void)
+{
+    return tuya_online_status_get();
+}
+
+void ipc_app_sync_utc_time(void)
+{
+    db_log_debug("ipc_app_sync_utc_time\n");
+}
+
+void tuya_ota_upgrade_event(int event)
+{
+    db_log_debug("tuya_ota_upgrade_event: %d\n", event);
+}
+
+void tuya_channel_valid_report(void)
+{
+    db_log_debug("tuya_channel_valid_report\n");
+    extern int tuya_channel_valid_report_impl(void);
+    tuya_channel_valid_report_impl();
+}
+
+void tuya_language_init_with_param(char ***first_row_str)
+{
+    db_log_debug("tuya_language_init_with_param\n");
+}
+

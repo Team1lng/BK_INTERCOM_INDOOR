@@ -348,6 +348,7 @@ enum btn_string_id
     STR_DOOR_2_COMPILE,
     STR_RELEASE_DATE,
     STR_SD_SIZE,
+    STR_TUYA_PID,
     STR_GET_TUYA_ID,
     STR_REPLACE_IT,
     STR_NO_TUYA_FILE,

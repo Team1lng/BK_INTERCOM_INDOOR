@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 2.8)
 # cmake最低使用版本
 # /opt/arm-anykav500-linux-uclibcgnueabi/usr/bin/
 # /opt/arm-anykav500-linux-uclibcgnueabi/usr/bin/
-# set(CMAKE_C_COMPILER "arm-anykav500-linux-uclibcgnueabi-gcc")
-# set(CMAKE_CXX_COMPILER "arm-anykav500-linux-uclibcgnueabi-g++")
+set(CMAKE_C_COMPILER "arm-anykav500-linux-uclibcgnueabi-gcc")
+set(CMAKE_CXX_COMPILER "arm-anykav500-linux-uclibcgnueabi-g++")
 # 设置编译器，此处为ARM平台，如果你安装了编译链就用名称，没安装请用绝对路径
 SET(leo_proj ../ANYKA37E.BIN)
 add_definitions(-DLV_LVGL_H_INCLUDE_SIMPLE)
@@ -79,6 +79,8 @@ add_definitions(-DTTF_FILE_PATH="/etc/config/sat_leo.ttf")
 add_definitions(-DROM_BIN_PATH="/etc/config/rom.bin")
 #涂鸦文件存储路径
 add_definitions(-DTUYA_DATA_PATH="/etc/config/")
+add_definitions(-DTUYA_KEY_PATH="/etc/config/tuya_key/")
+add_definitions(-DTUYA_CACHE_PATH="/etc/config/tuya_cache/")
 #铃声文件存储路径
 add_definitions(-DRING_FILE_PATH="/etc/config/rings/")
 #xls文件存储路径
@@ -92,6 +94,8 @@ add_definitions(-DTTF_FILE_PATH="/app/app/sat_leo.ttf")
 add_definitions(-DROM_BIN_PATH="/app/app/rom.bin")
 #涂鸦文件存储路径
 add_definitions(-DTUYA_DATA_PATH="/app/data/")
+add_definitions(-DTUYA_KEY_PATH="/app/data/tuya_key/")
+add_definitions(-DTUYA_CACHE_PATH="/app/data/tuya_cache/")
 #铃声文件存储路径
 add_definitions(-DRING_FILE_PATH="/app/app/rings/")
 #xls文件存储路径

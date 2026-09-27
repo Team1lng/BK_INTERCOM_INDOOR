@@ -97,7 +97,16 @@ static void lv_keyboard_event_cb1(lv_obj_t *kb)
                         // tuya_uuid_and_key_read((unsigned char*)user_data_get()->tuya_info.tuya_uuid,(unsigned char*)user_data_get()->tuya_info.tuya_key);
                         printf("tuya_uuid :%s           tuya_key:%s  \n", user_data_get()->tuya_info.tuya_uuid, user_data_get()->tuya_info.tuya_key);
                         user_data_get()->tuya_info.index = second_text;
-                        tuya_wifi_sdk_init(IPC_APP_PID, user_data_get()->tuya_info.tuya_uuid, user_data_get()->tuya_info.tuya_key);
+                        tuya_init_config_t tuya_cfg;
+                        memset(&tuya_cfg, 0, sizeof(tuya_cfg));
+                        strncpy(tuya_cfg.pid, IPC_APP_PID, sizeof(tuya_cfg.pid));
+                        strncpy(tuya_cfg.uuid, user_data_get()->tuya_info.tuya_uuid, sizeof(tuya_cfg.uuid));
+                        strncpy(tuya_cfg.key, user_data_get()->tuya_info.tuya_key, sizeof(tuya_cfg.key));
+                        strncpy(tuya_cfg.ver, IPC_APP_VERSION, sizeof(tuya_cfg.ver));
+                        strncpy(tuya_cfg.net_dev, user_data_get()->pairing_mode == WIRED_NET ? WIRED_DEV : WLAN_DEV, sizeof(tuya_cfg.net_dev));
+                        strncpy(tuya_cfg.cache_dir, TUYA_CACHE_PATH, sizeof(tuya_cfg.cache_dir));
+                        strncpy(tuya_cfg.sd_dir, SD_BASE_PATH2, sizeof(tuya_cfg.sd_dir));
+                        tuya_sdk_init(&tuya_cfg);
                         goto_layout(pLAYOUT(home));
                     }
                     else

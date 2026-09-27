@@ -223,7 +223,7 @@ static user_data_info user_data_default = {
 
 void app_version_create(int ver)
 {
-	int fd = open(LOCAL_APP_VER_PATH, O_WRONLY | O_CREAT);
+	int fd = open(LOCAL_APP_VER_PATH, O_WRONLY | O_CREAT, 0644);
 	if (fd < 0)
 	{
 		Debug("write open %s fail \n", LOCAL_APP_VER_PATH);
@@ -691,12 +691,12 @@ static void *user_data_task(void *arg)
 
 	ak_get_ostime(&tv1);
 	ak_get_ostime(&tv3);
-	watchdog_open();
+	// watchdog_open();  // 看门狗开启及喂狗移到 layout_define.c 的 feed_watchdog_task
 	while (1)
 	{
 		if (user_data_save_flag)
 		{
-			int fd = open(USER_DATA_PATH, O_WRONLY | O_CREAT);
+			int fd = open(USER_DATA_PATH, O_WRONLY | O_CREAT, 0644);
 			if (fd < 0)
 			{
 				Debug("write open %s fail \n", USER_DATA_PATH);
@@ -722,7 +722,7 @@ static void *user_data_task(void *arg)
 
 		if (abs(tv2.sec - tv3.sec) > 1)
 		{
-			watch_dog_feed();
+			// watch_dog_feed();  // 喂狗移到 layout_define.c 的 feed_watchdog_task
 			tv3 = tv2;
 		}
 
@@ -780,7 +780,7 @@ bool user_data_init(void)
 
 	tuya_set_current_language(user_data_get()->language.index);
 	network_local_family_set(user_data_get()->other.family_id);
-	extern void set_tuya_work_mode(unsigned int mode);
+	// extern void set_tuya_work_mode(unsigned int mode);
 	set_tuya_work_mode(user_data_get()->other.model);
 
 JIGE:

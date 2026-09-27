@@ -168,6 +168,7 @@ void monitor_switch(void);
 void monitor_close(void);
 void monitor_close_1(void);
 MONITOR_CH monitor_channel_get(void);
+bool monitor_valid_channel_check(char channel);
 
 bool audio_talk_open(audio_talk_ctrl ctrl);
 bool audio_talk_close(bool all_close);

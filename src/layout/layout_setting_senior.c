@@ -23,6 +23,7 @@ typedef enum senior_module_list
 	WEATHER_SWITCH_MODULE,
 	WEATHER_DURATION_MODULE,
 #endif
+	TUYA_UNBIND_MODULE,
 	TOTAL_MODULE
 } senior_module_list;
 
@@ -37,6 +38,7 @@ typedef enum senior_module_list
 	{199, 439, 700, 52},                \
 	{199, 491, 700, 52},                \
 	{199, 543, 700, 52},                \
+	{199, 595, 700, 52},                \
 };
 
 void upgrade_outdoor_func(unsigned long arg1, unsigned long arg2);
@@ -493,6 +495,41 @@ static void senior_Restart_systerm_set_btn_create(Controls_location **coordinate
 	static btn_data btn_data3 = btn_data_create(NULL, senior_Restart_systerm_set_btn_up, NULL);
 	btn_data1.OPS_ANYTHING = senior_set_btn_syn_event;
 	sys_setting_btn_create(**coordinate, text_str(STR_CONFIRM), text_str(STR_RESTART_SYSTEM), &btn_data3, NULL, &btn_data1);
+	(*coordinate)++;
+}
+
+static void window_senior_unbind_tuya_btn_up(lv_obj_t *obj)
+{
+	lv_obj_t *window_cont = lv_obj_get_child_form_id(lv_scr_act(), 888);
+	if (window_cont != NULL)
+	{
+		lv_obj_del(window_cont);
+	}
+	/* 解绑涂鸦 */
+	if (tuya_online_status_get() == true)
+	{
+		tuya_device_unbinding();
+		system("rm -rf " TUYA_CACHE_PATH "*");
+	}
+	backlight_open(false, false, 0);
+	extern int lcd_reset_pin_higt(void);
+	lcd_reset_pin_higt(); /* 防止上电复位失败 */
+	ak_sleep_ms(1000);
+	system("reboot");
+}
+
+static void senior_unbind_tuya_set_btn_up(lv_obj_t *obj)
+{
+	senior_set_btn_syn_up(obj);
+	senior_set_window_create(window_senior_unbind_tuya_btn_up, text_str(STR_UNBIND_HINT));
+}
+
+static void senior_unbind_tuya_set_btn_create(Controls_location **coordinate)
+{
+	static btn_data btn_data1 = btn_data_create(senior_set_btn_syn_down, senior_unbind_tuya_set_btn_up, NULL);
+	static btn_data btn_data3 = btn_data_create(NULL, senior_unbind_tuya_set_btn_up, NULL);
+	btn_data1.OPS_ANYTHING = senior_set_btn_syn_event;
+	sys_setting_btn_create(**coordinate, text_str(STR_CONFIRM), text_str(STR_TUYA_UNBIND), &btn_data3, NULL, &btn_data1);
 	(*coordinate)++;
 }
 
@@ -1110,6 +1147,7 @@ static void senior_setting_display(void)
 	senior_weather_duration_btn_create(&module_p);
 #endif
 
+	senior_unbind_tuya_set_btn_create(&module_p);
 	home_back_btn_create(senior_setting_back_btn_up, NULL);
 }
 

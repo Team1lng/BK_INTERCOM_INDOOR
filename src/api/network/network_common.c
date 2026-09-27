@@ -103,6 +103,24 @@ int get_outdoor_version(network_device ch)
 	return OutDoor_Info.info[ch == DEVICE_OUTDOOR_1 ? 0 : 1].ver;
 }
 
+int get_outdoor_model_version(network_device ch, int *model, int *ver)
+{
+	int index = ch == DEVICE_OUTDOOR_1 ? 0 : 1;
+	if (OutDoor_Info.info[index].model != 0 && OutDoor_Info.info[index].ver != 0)
+	{
+		if (model)
+		{
+			*model = OutDoor_Info.info[index].model;
+		}
+		if (ver)
+		{
+			*ver = OutDoor_Info.info[index].ver;
+		}
+		return 0;
+	}
+	return -1;
+}
+
 bool get_outdoor_finerger_status(network_device ch)
 {
 	return OutDoor_Info.info[ch == DEVICE_OUTDOOR_1 ? 0 : 1].fingerprint_module;
@@ -589,7 +607,7 @@ static void net_common_outdoor_talk_func(net_common_pack_info info)
 		data.device = info.send_device;
 		network_send_cmd_data(&data);
 	}
-	else if (tuya_online_clinet_num_get() == 0 && info.send_device != network_local_device)
+	else if (tuya_client_num_get() == 0 && info.send_device != network_local_device)
 	{
 		extern bool indoor_cmd_event_push(unsigned long arg1, unsigned long arg2);
 		unsigned long arg2 = ((info.send_device & 0xFF) << 8) | (outdoor_device);
@@ -684,9 +702,16 @@ static void net_common_compile_time_func(net_common_pack_info info)
 	ak_get_ostime(&curr_time);
 	device_heart_info[device_family_id][info.send_device].heart_time = curr_time.sec;
 
-	OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].Compile_year = (info.arg2 & 0xF8) >> 3;
-	OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].Compile_mon = (((info.arg2 & 0x07) << 8) | info.arg1) / 100;
-	OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].Compile_day = (((info.arg2 & 0x07) << 8) | info.arg1) % 100;
+	if (OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].model != OLD_OUTDOOR_MODEL)
+	{
+		int ver = (info.arg2 << 8) | info.arg1;
+		if (OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].ver != ver)
+		{
+			printf("new outdoor device:%d  version:%d\n", info.send_device, ver);
+			OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].ver = ver;
+			dev_info_status_event_push(1, 0);
+		}
+	}
 	// printf("%d.%d.%d \n",year,mon,day);
 }
 
@@ -748,7 +773,20 @@ static void net_common_stream_status_func(net_common_pack_info info)
 	// printf(PRINTF_GREEN"receive from outdoor[%d] heart packet ........\n\r"PRINTF_NONE,device == DEVICE_OUTDOOR_1 ? 1 : 2);
 	// fflush(stdout);
 	// printf("OUTDOOR VERSION: %d.%d \n",arg1 >> 4,arg2);
-	set_outdoor_version(info.send_device, (info.arg1 >> 4) * 100 + info.arg2);
+	if (info.arg1 & 0xF0)
+	{
+		OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].model = OLD_OUTDOOR_MODEL;
+		int ver = (info.arg1 >> 4) * 100 + info.arg2;
+		if (OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].ver != ver)
+		{
+			printf("old outdoor device:%d  version:%d\n", info.send_device, ver);
+			OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].ver = ver;
+		}
+	}
+	else
+	{
+		OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].model = info.arg2;
+	}
 	OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].talk_busy = info.arg1 & 0x02;
 	OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].fingerprint_module = info.arg1 & 0x04;
 	if (OutDoor_Info.info[info.send_device - DEVICE_OUTDOOR_1].talk_busy)
@@ -775,7 +813,7 @@ static void net_common_stream_status_func(net_common_pack_info info)
 			ak_thread_mutex_lock(&outdoor_order_mutex);
 			network_cmd_data data;
 			data.cmd = NET_COMMON_CMD_STREAM_STATUS;
-			data.arg1 = (tuya_online_clinet_num_get() ? true : get_video_data_display_state()) | outdoor_order_arg2;
+			data.arg1 = (tuya_client_num_get() ? true : get_video_data_display_state()) | outdoor_order_arg2;
 			data.arg2 = monitor_config_get()->outdoor1->out_talk_volume;
 			data.device = DEVICE_OUTDOOR_1;
 			network_send_cmd_data(&data);
@@ -791,7 +829,7 @@ static void net_common_stream_status_func(net_common_pack_info info)
 			ak_thread_mutex_lock(&outdoor_order_mutex);
 			network_cmd_data data;
 			data.cmd = NET_COMMON_CMD_STREAM_STATUS;
-			data.arg1 = (tuya_online_clinet_num_get() ? true : get_video_data_display_state()) | outdoor_order_arg2;
+			data.arg1 = (tuya_client_num_get() ? true : get_video_data_display_state()) | outdoor_order_arg2;
 			data.arg2 = monitor_config_get()->outdoor2->out_talk_volume;
 			data.device = DEVICE_OUTDOOR_2;
 			network_send_cmd_data(&data);
@@ -1016,6 +1054,7 @@ static void *network_cmd_receive_task(void *arg)
 							device_heart_info[family][dev].info.device_onlin_state = false;
 							if (dev == DEVICE_OUTDOOR_1 || dev == DEVICE_OUTDOOR_2)
 							{
+								OutDoor_Info.info[dev - DEVICE_OUTDOOR_1].model = 0;
 								set_outdoor_version(dev, 0);
 								dev_info_status_event_push(1, 0);
 								OutDoor_Info.info[0].talk_busy = OutDoor_Info.info[1].talk_busy = 0;

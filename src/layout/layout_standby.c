@@ -280,7 +280,7 @@ void tuya_event_motion_proc(unsigned long arg1, unsigned long arg2)
 	/* 截屏 */
 	case TUYA_EVENT_SCREENSHOT:
 	{
-		extern int tuya_dp_236_response_screenshot(BOOL_T state);
+		extern int tuya_dp_236_response_screenshot(bool state);
 		extern void screen_capture();
 		screen_capture();
 		tuya_dp_236_response_screenshot(false);
@@ -974,7 +974,7 @@ static void standby_time_display(struct tm *time)
 	lv_obj_set_style_local_text_font(time_obj_group[MIN_FOUMAT], LV_OBJ_PART_MAIN, LV_STATE_DEFAULT, FONT_SIZE_L(42));
 }
 
-#include "tuya_ipc_stream_storage.h"
+// #include "tuya_ipc_stream_storage.h"
 static void syandby_punctuation_display(void)
 {
 	// rom_bin_info btn_info = rom_bin_info_get(ROM_RES_STANDY_TIME_MAOHAO_PNG);
@@ -1187,7 +1187,7 @@ static void standby_Lock_2_task(lv_task_t *task_t)
 	lv_imgbtn_set_src(btn, LV_BTN_STATE_RELEASED, &info);
 	lv_imgbtn_set_src(btn, LV_BTN_STATE_PRESSED, &info);
 
-	tuya_dp_148_response_accessory_lock(false);
+	tuya_dp_234_response_outdoor_lock(false);
 
 	lock_2_task_lock_flag = 0;
 	if (unlock_2_task_t)
@@ -1209,7 +1209,7 @@ static void standby_Lock_1_task(lv_task_t *task_t)
 	lv_imgbtn_set_src(btn, LV_BTN_STATE_RELEASED, &info);
 	lv_imgbtn_set_src(btn, LV_BTN_STATE_PRESSED, &info);
 
-	tuya_dp_148_response_accessory_lock(false);
+	tuya_dp_234_response_outdoor_lock(false);
 
 	lock_1_task_lock_flag = 0;
 	if (unlock_1_task_t)
@@ -1275,7 +1275,7 @@ static void standy_menu_btn_up(lv_obj_t *obj)
 			data.arg1 = user_data_get()->door1.unlock_delay;
 			data.arg2 = 1 | user_data_get()->language.index << 2 | user_data_get()->other.unlock_hint << 7;
 			network_send_cmd_data(&data);
-			tuya_dp_148_response_accessory_lock(true);
+			tuya_dp_234_response_outdoor_lock(true);
 
 			if (unlock_1_task_t == NULL)
 			{
@@ -1303,7 +1303,7 @@ static void standy_menu_btn_up(lv_obj_t *obj)
 			data.arg1 = user_data_get()->door2.unlock_delay;
 			data.arg2 = 1 | user_data_get()->language.index << 2 | user_data_get()->other.unlock_hint << 7;
 			network_send_cmd_data(&data);
-			tuya_dp_148_response_accessory_lock(true);
+			tuya_dp_234_response_outdoor_lock(true);
 			if (unlock_2_task_t == NULL)
 			{
 				unlock_2_task_t = lv_task_create(standby_Lock_2_task, user_data_get()->door2.unlock_delay * 1000, LV_TASK_PRIO_HIGH, obj);
@@ -1823,7 +1823,7 @@ static void motion_record_task(lv_task_t *task_t)
 			if (get_video_data_display_state())
 			{
 				Debug("==================>>>>%d\n\n\n", get_video_data_display_state());
-				if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+				if (tuya_online_status_get() == true)
 				{
 					send_tuya_record(REC_MODE_MOTION);
 				}
@@ -1863,7 +1863,7 @@ static void motion_record_task(lv_task_t *task_t)
 	{
 
 		printf("%s======================>>%d\n", __func__, __LINE__);
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+		if (tuya_online_status_get() == true)
 		{
 			send_tuya_record(REC_MODE_MOTION);
 		}
@@ -2292,7 +2292,7 @@ void motion_detect_func(unsigned long arg1, unsigned long arg2)
 	Debug("==============MOTION_DETECT_FUNC====>>>>%d,%d\n\n\n", get_outdoor_talk_state(MON_CH_DOOR_1), get_outdoor_talk_state(MON_CH_DOOR_2));
 
 	// int brightness = 4;
-	if (get_outdoor_talk_state(MON_CH_DOOR_1) || get_outdoor_talk_state(MON_CH_DOOR_2) || tuya_monitor_state_get() || tuya_online_clinet_num_get() > 0) // 正在视频对讲其他机子无法操作
+	if (get_outdoor_talk_state(MON_CH_DOOR_1) || get_outdoor_talk_state(MON_CH_DOOR_2) || tuya_monitor_state_get() || tuya_client_num_get() > 0) // 正在视频对讲其他机子无法操作
 	{
 		return;
 	}

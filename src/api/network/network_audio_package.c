@@ -644,10 +644,9 @@ static void *network_audio_receive_package_task(void *arg)
 								if (receive_frame_count == receive_frame_size)
 								{
 									receive_frame_start = false;
-									extern TRANSFER_EVENT_E tuya_event_state_get(void);
 #if 0
 							
-									if (tuya_online_clinet_num_get() > 0 && tuya_event_state_get() == TRANS_LIVE_VIDEO_START)
+									if (tuya_client_num_get() > 0 && tuya_event_state_get() == TRANS_LIVE_VIDEO_START)
 									{
 										// printf("tuya audio send size : %d \n\r",node.len);
 										int pcm_buffer_size = receive_frame_size *2;
@@ -659,7 +658,7 @@ static void *network_audio_receive_package_task(void *arg)
 										pcm_buffer = NULL;
 										node.len = 0;
 									}
-									else if (/* tuya_ipc_get_client_tuya_online_clinet_num_getonline_num() <= 0 && */ (node.len + receive_frame_size) > PCM_BUFFER_MAX)
+									else if (/* tuya_ipc_get_client_tuya_client_num_getonline_num() <= 0 && */ (node.len + receive_frame_size) > PCM_BUFFER_MAX)
 									{
 
 										// write(fb,pcm_buffer,pcm_buffer_size);
@@ -699,30 +698,30 @@ static void *network_audio_receive_package_task(void *arg)
 									}
 
 #else
-									if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED && (tuya_event_state_get() == TRANS_LIVE_VIDEO_START || monitor_enter_way_get() == MONITOR_ENTER_MONTION || monitor_enter_way_get() == MONITOR_ENTER_CALL))
+									if (tuya_online_status_get() == true && (tuya_client_num_get() > 0 || monitor_enter_way_get() == MONITOR_ENTER_MONTION || monitor_enter_way_get() == MONITOR_ENTER_CALL))
 									{
 										int pcm_buffer_size = receive_frame_size * 2;
 										char *pcm_buffer = malloc(pcm_buffer_size);
 										if (pcm_buffer != NULL)
 										{
-											tuya_g711_decode(TUYA_G711_A_LAW, (short unsigned int *)receive_frame_buffer, receive_frame_size, (unsigned char *)pcm_buffer, (unsigned int *)&pcm_buffer_size);
+											tuya_g711a_decode((unsigned char *)receive_frame_buffer, receive_frame_size, (unsigned char *)pcm_buffer, (unsigned int *)&pcm_buffer_size);
 
 											if (!tuya_monitor_state_get())
 											{
 												// Debug_Lib(":%d ,%lld ms\n",tuya_ipc_ss_get_status(),os_get_ms());
 
-												tuya_ipc_ring_buffer_append_data(9 /*E_CHANNEL_AUDIO*/, (unsigned char *)pcm_buffer, pcm_buffer_size, 3 /*E_AUDIO_FRAME*/, os_get_ms());
+												tuya_realtime_audio_put_frame((unsigned char *)pcm_buffer, pcm_buffer_size, os_get_ms());
 												tuya_audio_ring_buffer_append = true;
 											}
 											free(pcm_buffer);
 										}
 									}
 
-									if ((tuya_online_clinet_num_get() <= 0 && tuya_event_state_get() != TRANS_LIVE_VIDEO_START))
+									if ((tuya_client_num_get() <= 0))
 									{
 										if ((node.len + receive_frame_size) > PCM_BUFFER_MAX)
 										{
-											// Debug_Lib("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!,%d,%d,%d\n", tuya_online_clinet_num_get(), tuya_event_state_get(), node.len + receive_frame_size);
+											// Debug_Lib("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!,%d,%d,%d\n", tuya_client_num_get(), tuya_event_state_get(), node.len + receive_frame_size);
 											if (audio_data_push_decode)
 											{
 												audio_decode_queue_push((unsigned char *)node.data, node.len);

@@ -12,6 +12,15 @@ int connectwifi_index = 0;
 int connected_wifi_max = 0;
 static void network_btn_up(lv_obj_t *obj);
 
+void wifi_link_info_refresh(void)
+{
+	bool continue_flag = true;
+
+	memset(&link_info, 0, sizeof(linked_info));
+	wpa_cli_wlan_status(&continue_flag);
+	get_linked_wifi_info(&link_info);
+}
+
 static void network_window_create(char *str);
 
 typedef enum
@@ -463,14 +472,14 @@ static void tuya_qrcode_destroy(void)
 
 static void tuya_qrcode_display(void)
 {
-	extern bool is_tuya_sdk_inited(void);
-	extern char *tuya_qrcode_str_get(void);
-	if (!is_tuya_sdk_inited())
-		return;
+	// extern bool is_tuya_sdk_inited(void);
+	// extern char *tuya_qrcode_str_get(void);
+	// if (tuya_online_status_get() == false)
+	// 	return;
 
 	if (qr == NULL)
 	{
-		char *info = tuya_qrcode_str_get();
+		const char *info = tuya_qrcode_shorturl_get();
 		// tuya_ipc_get_qrcode(NULL, info, 32);
 		// printf("tuya qrcode info :%s\n\r", info);
 
@@ -646,6 +655,7 @@ static void msg_task(struct _lv_task_t *task_t)
                 system("\\cp -rf /tmp/wpa_supplicant.conf " WPA_SUPPLICANT_PATH " &");
 				system("sync");
 				user_data_get()->wifi.wifi_connect_flag = true;
+				wifi_link_info_refresh();
 				user_data_save();
 				goto_layout(pLAYOUT(setting_wifi));
 				lv_obj_t *msg1 = connect_wifi_cb();
@@ -960,10 +970,8 @@ static void findwifi_wifibtn_create(lv_obj_t *parent)
 	// 打开后
 	bool a = true;
 	wpa_cli_scan_wifi(&a);
-	wpa_cli_wlan_status(&a);
 
-	memset(&link_info, 0, sizeof(linked_info));
-	get_linked_wifi_info(&link_info);
+	wifi_link_info_refresh();
 
 	if (link_info.completed)
 	{
@@ -1286,13 +1294,9 @@ void find_link_wifi(void)
 	if (!wifi_usb_module_enable())
 		return;
 
-	memset(&link_info, 0, sizeof(linked_info));
 	bool a = true;
 	wpa_cli_scan_wifi(&a);
-	extern bool wpa_cli_wlan_status(bool *continue_flag);
-	wpa_cli_wlan_status(&a); // 获取wifi状态 再获取链接WiFi的信息
-
-	get_linked_wifi_info(&link_info);
+	wifi_link_info_refresh();
 
 	printf("#################:%s\n", link_info.wlan_ssid);
 	printf("@@@@@@@@@@@@@@@@@@:%d\n", link_info.completed);
@@ -1304,6 +1308,7 @@ static void LAYOUT_ENETER_FUNC(setting_wifi)
 	setting_bg_display();
 	is_wifi_page_move = false;
 	wifi_control = true;
+	wifi_link_info_refresh();
 	// wpa_cli_scan_wifi(&wifi_control);
 	// wpa_cli_wlan_status(&wifi_control);
 	wifi_setting_display();

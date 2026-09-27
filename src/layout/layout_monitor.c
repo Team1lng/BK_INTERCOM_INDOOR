@@ -363,7 +363,7 @@ static void monitor_indoor_cmd_func(unsigned long arg1, unsigned long arg2)
 static void monitor_tuya_exit_task(lv_task_t *task_t)
 {
 		Debug("=================+>>>>>>\n");
-		int on_line = tuya_online_clinet_num_get();
+		int on_line = tuya_client_num_get();
 		if(on_line <1 && current_layout_get() == &layout_monitor && monitor_enter_way_get() == MONITOR_ENTER_TUYA)
 		{
 			tuya_event_state_set(TRANS_LIVE_VIDEO_STOP);
@@ -559,7 +559,7 @@ void tuya_event_inside_proc(unsigned long arg1, unsigned long arg2)
 	/* 截屏 */
 	case TUYA_EVENT_SCREENSHOT:
 	{
-		extern int tuya_dp_236_response_screenshot(BOOL_T state);
+		extern int tuya_dp_236_response_screenshot(bool state);
 		extern void screen_capture();
 		screen_capture();
 		tuya_dp_236_response_screenshot(false);
@@ -652,7 +652,7 @@ void tuya_event_extern_proc(unsigned long arg1, unsigned long arg2)
 	/* 截屏 */
 	case TUYA_EVENT_SCREENSHOT:
 	{
-		extern int tuya_dp_236_response_screenshot(BOOL_T state);
+		extern int tuya_dp_236_response_screenshot(bool state);
 		extern void screen_capture();
 		screen_capture();
 		tuya_dp_236_response_screenshot(false);
@@ -1602,7 +1602,7 @@ static void monitor_light_control(bool open)
 	network_send_cmd_data(&data);
 	printf("%s ==========================+++++>%d\n", __func__, monitor_channel_get());
 
-	if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+	if (tuya_online_status_get() == true)
 		tuya_dp_138_response_light_switch(open);
 }
 
@@ -1673,7 +1673,7 @@ static void monitor_Lock_1_task(lv_task_t *task_t)
 	lv_obj_set_style_local_pattern_image(btn, LV_OBJ_PART_MAIN, LV_STATE_PRESSED, &info);
 	lv_obj_clear_state(btn, LV_STATE_FOCUSED);
 
-	tuya_dp_148_response_accessory_lock(false);
+	tuya_dp_234_response_outdoor_lock(false);
 
 	if (unlock_1_task_t)
 	{
@@ -1710,7 +1710,7 @@ static void monitor_Lock_1_btn_up(lv_obj_t *obj)
 		data.arg2 = lock_id | user_data_get()->language.index << 2 | user_data_get()->other.unlock_hint << 7;
 		network_send_cmd_data(&data);
 		printf("%s =================>>%d,%d\n\r", __func__, __LINE__, data.arg2);
-		tuya_dp_148_response_accessory_lock(true);
+		tuya_dp_234_response_outdoor_lock(true);
 
 		if (monitor_ring_time_ptask != NULL)
 		{
@@ -2011,7 +2011,7 @@ void monitor_auto_record_pictrue(bool only_send_tuya)
 {
 	if (only_send_tuya)
 	{
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+		if (tuya_online_status_get() == true)
 		{
 			extern bool send_tuya_record(char record_mode);
 			send_tuya_record(REC_MODE_TUYA);
@@ -2021,7 +2021,7 @@ void monitor_auto_record_pictrue(bool only_send_tuya)
 	{
 		if (is_sdcard_insert() == false)
 		{
-			if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+			if (tuya_online_status_get() == true)
 			{
 				extern bool send_tuya_record(char record_mode);
 				send_tuya_record(REC_MODE_TUYA);
@@ -2993,7 +2993,7 @@ static void monitor_call_inside_func(unsigned long arg1, unsigned long arg2)
 	}
 	if (!is_sdcard_insert())
 	{
-		if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+		if (tuya_online_status_get() == true)
 		{
 			extern bool send_tuya_record(char record_mode);
 			send_tuya_record(REC_MODE_TUYA);

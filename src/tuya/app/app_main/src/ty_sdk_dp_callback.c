@@ -34,11 +34,15 @@ STATIC VOID handle_DP_SD_STORAGE_ONLY_GET(IN TY_OBJ_DP_S *p_obj_dp);
 
 VOID TUYA_IPC_upload_all_status(VOID)
 {
+    tuya_dp_138_response_light_switch(false);
+
+    tuya_dp_189_response_work_mode(0);
+
     tuya_door_lock_report(TUYA_DOOR_LOCK1, false);
 
     tuya_door_lock_report(TUYA_DOOR_LOCK2, false);
 
-    tuya_door_lock_report(TUYA_INDOOR_LOCK, false);
+    tuya_door_lock_report(TUYA_DOOR_LOCK3, false);
 
     tuya_lock_support_report();
 
@@ -684,26 +688,17 @@ int tuya_channel_report(int curr_ch, tuya_ch_info_t *info, int total)
 #endif
 
 static int door_lock_dp[] = {
-#ifdef TUYA_DP_DOOR_LOCK
-    TUYA_DP_DOOR_LOCK,
-#endif
-#ifdef TUYA_DP_DOOR_LOCK1
-    TUYA_DP_DOOR_LOCK1,
-#endif
-#ifdef TUYA_DP_DOOR_LOCK2
-    TUYA_DP_DOOR_LOCK2,
-#endif
-#ifdef TUYA_DP_INDOOR_LOCK
-    TUYA_DP_INDOOR_LOCK,
-#endif
+    TUYA_DP_DOOR_LOCK,   // 148  → index 0 (主锁/Lock1)
+    TUYA_DP_DOOR_LOCK1,  // 232  → index 1 (Gate1/Lock2)
+    TUYA_DP_DOOR_LOCK2,  // 243  → index 2 (Gate2/Lock3)
 };
 
 int tuya_door_lock_report(tuya_door_lock_t lock, bool state)
 {
-    if (tuya_online_status_get() == false && lock < (sizeof(door_lock_dp) / sizeof(door_lock_dp[0])))
-	{
-		return -1;
-	}
+    if (tuya_online_status_get() == false || lock >= (sizeof(door_lock_dp) / sizeof(door_lock_dp[0])))
+    {
+        return -1;
+    }
     // db_log_debug("%d,%d\n", door_lock_dp[lock], state);
     respone_dp_bool(door_lock_dp[lock], state);
     return 0;
@@ -713,7 +708,11 @@ int tuya_door_lock_report(tuya_door_lock_t lock, bool state)
 STATIC VOID handle_DP_DOOR_LOCK(IN TY_OBJ_DP_S *p_obj_dp)
 {
     BOOL_T state = check_dp_bool_invalid(p_obj_dp);
-    respone_dp_bool(p_obj_dp->dpid, state);
+    bool tuya_unlock_event(bool state, tuya_event event);
+    if (state)
+    {
+        tuya_unlock_event(true, TUYA_EVENT_OPEN_LOCK);
+    }
 }
 #endif
 
@@ -722,7 +721,10 @@ STATIC VOID handle_DP_DOOR_LOCK1(IN TY_OBJ_DP_S *p_obj_dp)
 {
     BOOL_T state = check_dp_bool_invalid(p_obj_dp);
     bool tuya_unlock_event(bool state, tuya_event event);
-    tuya_unlock_event(state, TUYA_EVENT_OPEN_LOCK);
+    if (state)
+    {
+        tuya_unlock_event(true, TUYA_EVENT_OPEN_GATE1);
+    }
 }
 #endif
 
@@ -730,17 +732,11 @@ STATIC VOID handle_DP_DOOR_LOCK1(IN TY_OBJ_DP_S *p_obj_dp)
 STATIC VOID handle_DP_DOOR_LOCK2(IN TY_OBJ_DP_S *p_obj_dp)
 {
     BOOL_T state = check_dp_bool_invalid(p_obj_dp);
-    bool tuya_unlock_event(bool state, tuya_event event);
-    tuya_unlock_event(state, TUYA_EVENT_OPEN_GATE1);
-}
-#endif
-
-#ifdef TUYA_DP_INDOOR_LOCK
-STATIC VOID handle_DP_INDOOR_LOCK(IN TY_OBJ_DP_S *p_obj_dp)
-{
-    BOOL_T state = check_dp_bool_invalid(p_obj_dp);
     extern bool tuya_monitor_gate2_event(bool state);
-    tuya_monitor_gate2_event(state);
+    if (state)
+    {
+        tuya_monitor_gate2_event(true);
+    }
 }
 #endif
 

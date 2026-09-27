@@ -489,3 +489,24 @@ AUDIO_TALK_PATTERN is_audio_talk_open(void)
 {
 	return audio_talk_status;
 }
+
+bool monitor_valid_channel_check(char channel)
+{
+	if (channel == MON_CH_DOOR_1 && device_online_state_get(DEVICE_OUTDOOR_1) && device_enable_state_get(DEVICE_OUTDOOR_1))
+	{
+		return true;
+	}
+	else if (channel == MON_CH_DOOR_2 && device_online_state_get(DEVICE_OUTDOOR_2) && device_enable_state_get(DEVICE_OUTDOOR_2))
+	{
+		return true;
+	}
+	else if (channel == MON_CH_CCTV_1 && device_enable_state_get(DEVICE_CCTV_1) && device_online_state_get(DEVICE_CCTV_1))
+	{
+		return true;
+	}
+	else if (channel == MON_CH_CCTV_2 && device_enable_state_get(DEVICE_CCTV_2) && device_online_state_get(DEVICE_CCTV_2))
+	{
+		return true;
+	}
+	return false;
+}

@@ -546,8 +546,8 @@ typedef enum
 extern unsigned long long os_get_ms(void);
 
 static bool receive_frame_push = false;
-extern OPERATE_RET ipc_app_sync_utc_time(VOID);
-extern bool get_p2p_online_status(void);
+// extern OPERATE_RET ipc_app_sync_utc_time(VOID);
+// extern bool get_p2p_online_status(void);
 static void *network_video_receive_package_task(void *arg)
 {
 	extern int h264_is_keyframe(const unsigned char *buffer, int len);
@@ -608,10 +608,14 @@ static void *network_video_receive_package_task(void *arg)
 		/*设置select等待的最大时间 检测集合read中的句柄是否有可读信息*/
 		int ret_select = select(video_package_receive_fd + 1, &readfds, NULL, NULL, &timeout);
 
-		int tuya_record_status = tuya_ipc_ss_get_status();
+		// int tuya_record_status = tuya_ipc_ss_get_status();
 // printf("-----------------------%d:%d \n",ss_start_event,monitor_enter_way_get());
 #if 1
-		if (ss_event_status == SS_IDLE && ((monitor_enter_way_get() == MONITOR_ENTER_MONTION) || monitor_enter_way_get() == MONITOR_ENTER_CALL) && (is_sdcard_insert() == true) && (tuya_record_status != E_STORAGE_ONGOING) && (tuya_record_status != E_STORAGE_START) && (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED))
+		if (ss_event_status == SS_IDLE &&
+			((monitor_enter_way_get() == MONITOR_ENTER_MONTION) || monitor_enter_way_get() == MONITOR_ENTER_CALL) &&
+			(is_sdcard_insert() == true) &&
+			tuya_stream_storage_stopped() &&
+			(tuya_online_status_get() == true))
 		{
 			bool get_tuya_audio_ring_buffer_append_status(void);
 			if (get_tuya_audio_ring_buffer_append_status() && send_tuya_frame_count > 5)
@@ -619,18 +623,18 @@ static void *network_video_receive_package_task(void *arg)
 				ss_event_status = SS_ONGING;
 
 				// tuya_ipc_ring_buffer_video_release_data();
-				tuya_ipc_ss_start_event();
-				Debug_Lib("tuya_ipc_ss_start_event==================================================>>>>>:%d ,%lld ms \n", tuya_ipc_ss_get_status(), os_get_ms());
+				tuya_stream_storage_start();
+				// Debug_Lib("tuya_ipc_ss_start_event==================================================>>>>>:%d ,%lld ms \n", tuya_ipc_ss_get_status(), os_get_ms());
 			}
 		}
-		else if ((networK_video_receive_task_run == false || tuya_event_state_get() == TRANS_LIVE_VIDEO_START || (is_sdcard_insert() == false) || tuya_monitor_state_get()) && ss_event_status == SS_ONGING)
+		else if ((networK_video_receive_task_run == false || tuya_client_num_get() > 0 || (is_sdcard_insert() == false) || tuya_monitor_state_get()) && ss_event_status == SS_ONGING)
 		{
 			ss_event_status = SS_STOP;
-			if ((tuya_record_status != E_STORAGE_READY_TO_STOP) && (tuya_record_status != E_STORAGE_STOP))
+			if (tuya_stream_storage_recording())
 			{
 				extern void tuya_stream_storage_stop(bool keep_upload);
 				/* 当前设备或其他设备没有进入涂鸦监控或者其他设备，将上传黑屏数据结束回访，反之则不上传 */
-				tuya_stream_storage_stop(tuya_event_state_get() != TRANS_LIVE_VIDEO_START && !tuya_monitor_state_get());
+				tuya_stream_storage_stop(tuya_client_num_get() <= 0 && !tuya_monitor_state_get());
 			}
 			// tuya_ipc_ss_stop_event();
 			Debug_Lib("tuya_ipc_ss_stop_event==================================================>>>>> ,%lld ms\n", os_get_ms());
@@ -738,27 +742,15 @@ static void *network_video_receive_package_task(void *arg)
 									// if(frame_type == E_VIDEO_I_FRAME)
 									// Debug_Lib("receive_I_frame_size:%d,0x%x \n",receive_frame_count,*(node.data + 5));
 									// 	x = os_get_ms() ;
-									if (/* tuya_record_status != E_STORAGE_STOP ||  */ (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED && (tuya_event_state_get() == TRANS_LIVE_VIDEO_START || monitor_enter_way_get() == MONITOR_ENTER_MONTION || monitor_enter_way_get() == MONITOR_ENTER_CALL)))
+									if (/* tuya_record_status != E_STORAGE_STOP ||  */ (tuya_online_status_get() == true && (tuya_client_num_get() > 0 || monitor_enter_way_get() == MONITOR_ENTER_MONTION || monitor_enter_way_get() == MONITOR_ENTER_CALL)))
 									{
 										if (!tuya_monitor_state_get() && networK_video_receive_task_run)
 										{
 											if (frist_tuya_i_frame == false && frame_type == E_VIDEO_I_FRAME)
 											{
-												if (tuya_event_state_get() == TRANS_LIVE_VIDEO_START)
-												{
-													/* 视频通道为子通道 */
-													// if(node.ch == 1)
-													{
-														frist_tuya_i_frame = true; /* 涂鸦上传第一帧需要是I帧 */
-														Debug_Lib("tuya_ipc_ring_buffer_append_data\n");
-													}
-												}
-												else
-												{
-													frist_tuya_i_frame = true; /* 涂鸦上传第一帧需要是I帧 */
-													Debug_Lib("tuya_ipc_ring_buffer_append_data\n");
-												}
-												void tuya_upload_disable(void);
+												frist_tuya_i_frame = true; /* 涂鸦上传第一帧需要是I帧 */
+												Debug_Lib("tuya_ipc_ring_buffer_append_data\n");
+												extern void tuya_upload_disable(void);
 												tuya_upload_disable();
 											}
 
@@ -766,11 +758,7 @@ static void *network_video_receive_package_task(void *arg)
 											if (frist_tuya_i_frame)
 											{
 												send_tuya_frame_count++;
-												tuya_ipc_ring_buffer_append_data(E_CHANNEL_VIDEO_MAIN,
-																				 node.data,
-																				 node.len,
-																				 frame_type,
-																				 os_get_ms());
+												tuya_realtime_video_put_frame(node.data, node.len, os_get_ms());
 											}
 #else
 
@@ -786,7 +774,7 @@ static void *network_video_receive_package_task(void *arg)
 										}
 									}
 
-									if ((tuya_online_clinet_num_get() <= 0) && (tuya_event_state_get() != TRANS_LIVE_VIDEO_START) && networK_video_receive_task_run)
+									if ((tuya_client_num_get() <= 0) && networK_video_receive_task_run)
 									{
 // printf("==================================================>>>>>:%d :%d\n",node.len - 4,node.is_video);
 #ifdef LINK_LIST_ENABLE

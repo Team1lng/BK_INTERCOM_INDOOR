@@ -10,6 +10,7 @@
 #include "string.h"
 #include "leo_api.h"
 #include "tuya_ipc_p2p.h"
+#include "tuya_sdk.h"
 #include "ring_buffer.h"
 
 #ifdef LINK_LIST_ENABLE
@@ -397,7 +398,7 @@ static ak_pthread_t video_decode_thread = 0;
 bool video_decode_open(char type, int src_width, int src_height)
 {
 	printf("%s============================src_width:%d			src_height:%d\n", __func__, src_width, src_height);
-	if (tuya_ipc_get_client_online_num() > 0 && tuya_event_state_get() == TRANS_LIVE_VIDEO_START)
+	if (tuya_client_num_get() > 0)
 	{
 		return false;
 	}
@@ -543,8 +544,7 @@ bool video_decode_queue_reset(void)
 
 bool get_video_data_display_state(void)
 {
-	extern INT_T tuya_online_clinet_num_get(void);
-	if (tuya_online_clinet_num_get() > 0) // tuya监控就不用管状态-这代码的意义
+	if (tuya_client_num_get() > 0) // tuya监控就不用管状态-这代码的意义
 	{
 		// printf("%s ============================>>%d\n",__func__,__LINE__);
 		return false;

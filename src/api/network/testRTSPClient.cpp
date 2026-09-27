@@ -727,30 +727,33 @@ static void live555_rtsp_stream_insert(unsigned char *data, int len)
     //     rtsp_stream_thread_flag = true;
     // }
 
-    if (/* get_video_decode_state() == true && rtsp_stream_thread_flag &&  */ tuya_event_state_get() != TRANS_LIVE_VIDEO_START)
+    if (get_video_decode_state() == true)
     {
         //  printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:%d = = %d\n",get_video_decode_state(),node.len);
         video_decode_push(0, (unsigned char *)node.data, node.len);
+    }
+
+    if (tuya_client_num_get() == 0)
+    {
         video_record_data_push(&node);
     }
 
-    if ((is_sdcard_insert() == true) && (tuya_ipc_ss_get_status() != E_STORAGE_ONGOING) && tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
-    {
-        // printf("==================================================>>>>>:%d \n",tuya_ipc_ss_get_status() );
-        // tuya_ipc_ss_start_event();
-    }
-    else if ((is_sdcard_insert() == false) && (tuya_ipc_ss_get_status() == E_STORAGE_ONGOING))
-    {
-        // printf("==================================================>>>>>:%d \n",tuya_ipc_ss_get_status() );
-        // tuya_ipc_ss_stop_event();
-    }
+    // if ((is_sdcard_insert() == true) && (tuya_ipc_ss_get_status() != E_STORAGE_ONGOING) && tuya_online_status_get() == true)
+    // {
+    //     // printf("==================================================>>>>>:%d \n",tuya_ipc_ss_get_status() );
+    //     // tuya_ipc_ss_start_event();
+    // }
+    // else if ((is_sdcard_insert() == false) && (tuya_ipc_ss_get_status() == E_STORAGE_ONGOING))
+    // {
+    //     // printf("==================================================>>>>>:%d \n",tuya_ipc_ss_get_status() );
+    //     // tuya_ipc_ss_stop_event();
+    // }
 
-    if (tuya_ipc_register_status_get() == E_IPC_ACTIVEATED)
+    if (tuya_online_status_get() == true)
     {
-        tuya_ipc_ring_buffer_append_data(E_CHANNEL_VIDEO_MAIN, (unsigned char *)node.data, node.len, h264_is_keyframe((const unsigned char *)(node.data + 4), node.len - 4) ? E_VIDEO_I_FRAME : E_VIDEO_PB_FRAME, os_get_ms());
-
-        unsigned char audio_frame[1280] = {0};
-        tuya_ipc_ring_buffer_append_data(E_CHANNEL_AUDIO, (unsigned char *)audio_frame, 320, E_AUDIO_FRAME, os_get_ms());
+        tuya_realtime_video_put_frame(node.data, node.len, os_get_ms());
+        // unsigned char audio_frame[320] = {0};
+        // tuya_realtime_audio_put_frame(audio_frame, sizeof(audio_frame), os_get_ms());
     }
 
     ak_mem_free(node.data);

@@ -209,7 +209,7 @@ const unsigned char *get_rom_bin_base(void)
             return NULL;
         }
 
-        int fd = open(file_path, O_RDONLY | O_CREAT);
+        int fd = open(file_path, O_RDONLY);
         if (fd < 0)
         {
             LV_LOG_ERROR("rom bin base addres fail:%s,%s\n", file_path, ROM_BIN_PATH);

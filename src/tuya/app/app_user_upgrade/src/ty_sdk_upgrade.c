@@ -46,10 +46,9 @@ OPERATE_RET __IPC_APP_upgrade_notify_cb(IN CONST FW_UG_S *fw, IN CONST INT_T dow
     printf("Upgrade Finish\n\r");
     printf("download_result:%d fw_url:%s\n\r", download_result, fw->fw_url);
 
-    if (download_result == 0)
+    if (download_result != 0)
     {
-        /* The developer needs to implement the operation of OTA upgrade,
-        when the OTA file has been downloaded successfully to the specified path. [ p_mgr_info->upgrade_file_path ]*/
+        return download_result;
     }
     if (fw->tp == DEV_NM_ATH_SNGL) // 室内机升级包，开始升级室内机
     {
@@ -97,8 +96,8 @@ OPERATE_RET __IPC_APP_upgrade_notify_cb(IN CONST FW_UG_S *fw, IN CONST INT_T dow
     else // 门口机升级包，开始升级门口机
     {
         system("mv /tmp/TWO_WIRE_APP /tmp/cbin.update");
-        extern bool tuya_ota_upgrade_event(void);
-        tuya_ota_upgrade_event();
+        // extern bool tuya_ota_upgrade_event(void);
+        tuya_ota_upgrade_event(0);
     }
 
     // TODO

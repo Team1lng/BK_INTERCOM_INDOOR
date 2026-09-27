@@ -1,9 +1,9 @@
 #ifndef _USER_DATA_H_
 #define _USER_DATA_H_
 #include "stdbool.h"
-#include "tuya_ipc_api.h"
 #include "tuya_uuid_and_key.h"
 #include "leo_api.h"
+#include "tuya_sdk.h"
 
 #define USER_DATA_PATH USER_FILE_PATH "user_data.cfg"
 #define LOCAL_APP_VER_PATH USER_FILE_PATH "app_version.cfg"

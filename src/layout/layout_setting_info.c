@@ -15,6 +15,7 @@ typedef enum info_module_list
 #endif
 	RELESE_DATE_MODULE,
 	SD_SPACE_MODULE,
+	TUYA_PID_MODULE,
 	TUYA_UUID_MODULE,
 	TOTAL_MODULE
 } info_module_list;
@@ -105,9 +106,18 @@ static void info_Outdoor_version_btn_create(Controls_location **coordinate)
 {
 	static btn_data btn_data1 = btn_data_create(NULL, NULL, NULL);
 	static char str1[32] = {0};
-	if (get_outdoor_version(DEVICE_OUTDOOR_1) != 0)
+	int ver = 0;
+	int model = 0;
+	if (get_outdoor_model_version(DEVICE_OUTDOOR_1, &model, &ver) == 0)
 	{
-		sprintf(str1, "Ver %02d.%02d", get_outdoor_version(DEVICE_OUTDOOR_1) / 100, get_outdoor_version(DEVICE_OUTDOOR_1) % 100);
+		if (model == OLD_OUTDOOR_MODEL)
+		{
+			sprintf(str1, "Ver %02d.%02d", ver / 100, ver % 100);
+		}
+		else
+		{
+			sprintf(str1, "Ver %d.%d.%d", ver / 10000, ver % 10000 / 100, ver % 100);
+		}
 
 		sys_setting_btn_create(**coordinate, str1, text_str(STR_DOOR_1_VERSION), &btn_data1, NULL, NULL);
 		(*coordinate)++;
@@ -115,9 +125,16 @@ static void info_Outdoor_version_btn_create(Controls_location **coordinate)
 
 	static btn_data btn_data3 = btn_data_create(NULL, NULL, NULL);
 	static char str4[32] = {0};
-	if (get_outdoor_version(DEVICE_OUTDOOR_2) != 0)
+	if (get_outdoor_model_version(DEVICE_OUTDOOR_2, &model, &ver) == 0)
 	{
-		sprintf(str4, "Ver %02d.%02d", get_outdoor_version(DEVICE_OUTDOOR_2) / 100, get_outdoor_version(DEVICE_OUTDOOR_2) % 100);
+		if (model == OLD_OUTDOOR_MODEL)
+		{
+			sprintf(str4, "Ver %02d.%02d", ver / 100, ver % 100);
+		}
+		else
+		{
+			sprintf(str4, "Ver %d.%d.%d", ver / 10000, ver % 10000 / 100, ver % 100);
+		}
 
 		sys_setting_btn_create(**coordinate, str4, text_str(STR_DOOR_2_VERSION), &btn_data3, NULL, NULL);
 		(*coordinate)++;
@@ -214,6 +231,15 @@ static void info_SD_remain_space_btn_create(Controls_location **coordinate)
 	(*coordinate)++;
 	lv_obj_set_base_dir(btn, LV_BIDI_DIR_LTR);
 }
+
+static void info_Tuya_pid_btn_create(Controls_location **coordinate)
+{
+	static btn_data btn_data3 = btn_data_create(NULL, NULL, NULL);
+	lv_obj_t *btn = sys_setting_btn_create(**coordinate, IPC_APP_PID, text_str(STR_TUYA_PID), &btn_data3, NULL, NULL);
+	(*coordinate)++;
+	lv_obj_set_base_dir(btn, LV_BIDI_DIR_LTR);
+}
+
 static void window_no_btn_up(lv_obj_t *obj)
 {
 	lv_obj_t *window_cont = lv_obj_get_child_form_id(lv_scr_act(), 789);
@@ -390,6 +416,7 @@ static void info_setting_display(void)
 
 	info_Relesse_date_btn_create(&module_p);
 	info_SD_remain_space_btn_create(&module_p);
+	info_Tuya_pid_btn_create(&module_p);
 	if (wifi_usb_module_enable())
 		info_Tuya_uuid_btn_create(&module_p);
 

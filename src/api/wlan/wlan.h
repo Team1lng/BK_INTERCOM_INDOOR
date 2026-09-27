@@ -26,6 +26,14 @@ typedef struct {
     char mac[32];
 }linked_info;
 
+enum
+{
+    WIFI_CONNECTION_CHECK_IDLE = 0,
+    WIFI_CONNECTION_CHECK_RUNNING = 1,
+    WIFI_CONNECTION_CHECK_SUCCESS = 2,
+    WIFI_CONNECTION_CHECK_FAIL = 3,
+};
+
 void wifi_usb_module_init(void);
 
 bool wifi_usb_module_enable(void);

@@ -63,7 +63,7 @@ extern "C" {
 
 /* special DP point in IPC */
 #define TUYA_DP_DOOR_BELL                  136         /* Doorbell call, STR type, "current timestamp"*/
-// #define TUYA_DP_BLUB_SWITCH                138         /* Light control switch, BOOL type, true menas open, false means closed*/
+#define TUYA_DP_BLUB_SWITCH                138         /* Light control switch, BOOL type, true menas open, false means closed*/
 #define TUYA_DP_SOUND_DETECT               139         /* Decibel detection switch,BOOL type,true means open,false means closed */
 #define TUYA_DP_SOUND_SENSITIVITY          140         /* Decibel detection sensitivity, ENUM type, 0 means low sensitivity, 1 means high sensitivity */
 #define TUYA_DP_SOUND_ALARM                141         /* Decibel alarm channel, STR type, "current timestamp" */
@@ -79,25 +79,27 @@ extern "C" {
 #define TUYA_DP_DOOR_BELL_SNAP             154         /* Doorbell push tips from screenshot*/
 
 #define TUYA_DP_REBOOT_SYSTEM              162         /* 重启系统 */
-// #define TUYA_DP_WORK_MODE                  189         /* 工作模式 */
+#define TUYA_DP_WORK_MODE                  189         /* 工作模式 */
 
 /*ptz联动dp点*/
 #define TUYA_DP_LINK_MOVE_ACTION          190         /* ptz联动dp点*/
 #define TUYA_DP_LINK_MOVE_SET             199         /* ptz联动dp点*/
-#define TUYA_DP_AP_MODE                   231         /* AP mode query, BOOL type, value 1 means ap mode, value 0 means not in ap mode*/
-#define TUYA_DP_AP_SWITCH                 232         /* data from app:{ ap_enable : 1, ap_ssid : xxxx, password : xxx } data to app: {ap_enable:0, errcode : 0 }*/
-#define TUYA_DP_AP_TIME_SYNC              233         /* AP mode time sync, STR type, data from app:{ "1629808340" }*/
-#define TUYA_DP_AP_TIME_ZONE              234         /* AP mode timezone sync, STR type, data from app:{ "+8" }*/
+/* 231-234 are assigned to this product's channel and lock DPs. */
+// #define TUYA_DP_AP_MODE                   231
+// #define TUYA_DP_AP_SWITCH                 232
+// #define TUYA_DP_AP_TIME_SYNC              233
+// #define TUYA_DP_AP_TIME_ZONE              234
 
 #define TUYA_RAW_DP_DEMO_SYTLE            102        /* a examples of raw dp*/
 
 /* 自定义dp点 */
 #define TUYA_DP_SWITCH_CHANNEL      231 /* 切换app监控视频通道 */
-#define TUYA_DP_DOOR_LOCK1          234 /* 自定义门锁1 */
-#define TUYA_DP_DOOR_LOCK2          232 /* 自定义门锁2 */
+#define TUYA_DP_DOOR_LOCK1          232 /* 门口机 gate1 */
+#define TUYA_DP_DOOR_LOCK           148 /* 门口机主锁（对齐 WILPIE：148/232/243） */
+#define TUYA_DP_DOOR_LOCK2          243 /* 室内机 gate2 */
 #define TUYA_DP_LOCK_SUPPORT        233 /* 多门锁支持 */
+#define TUYA_DP_DEVICE_ACTIVE       235 /* 设备首次注册 */
 #define TUYA_DP_DEVICE_SCREENSHOT   236 /* 自定义截图 */
-#define TUYA_DP_INDOOR_LOCK         244 /* 室内机锁 */
 
 /* Report the latest status of all local DP points*/
 VOID IPC_APP_upload_all_status(VOID);

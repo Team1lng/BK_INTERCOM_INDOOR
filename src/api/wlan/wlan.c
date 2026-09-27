@@ -8,17 +8,20 @@
 #include <unistd.h>
 #include <stdio.h>
 #include "wlan.h"
+#include "wifi_scan_policy.h"
 #include "../../lvgl/lvgl.h"
 
-#include "../../include/tuya/tuya_sdk.h"
+#include "tuya_sdk.h"
 
-#include "../../include/tuya/tuya_ipc_api.h"
+// #include "../../include/tuya/tuya_ipc_api.h"
 #include <signal.h>
+#include <stdlib.h>
 #include "../gpio/gpio_api.h"
 
 static int scanned_wifi_index = 0;
 static linked_info wifi_wlan0 = {0};
 static wifi_info scanned_wifi[MAX_WIFI_SCAN] = {{"\0", "\0", 0, false, false}};
+static volatile bool wifi_scan_running = false;
 
 static bool wifi_usb_enable = true;
 #define WIFI_USB_DETECT_PIN 26
@@ -148,23 +151,28 @@ static int if_wlan_up(void)
 
 int wpa_cli_scan_wifi(bool *continue_flag)
 {
+    int result = -1;
+
+    if (continue_flag == NULL || !wifi_scan_try_begin(&wifi_scan_running))
+    {
+        return scanned_wifi_index;
+    }
+
     // system("wpa_cli -i wlan0 scan");
     int ret = if_wlan_up();
     if (ret <= 0)
     {
-        printf("-0-\n\r");
-        return -1;
+        goto scan_done;
     }
     FILE *fp = popen("wpa_cli -i wlan0 scan", "r");
     if (fp == NULL)
     {
         perror("wpa_cli -i wlan0 scan open fail !\n\r");
-        return -1;
+        goto scan_done;
     }
     char buffer[32] = {0};
     while (fgets(buffer, sizeof(buffer), fp) && (*continue_flag == true))
     {
-        printf(">>> [wlan scan: %s ]\n\r", buffer);
         // if (strstr(buffer, "OK") == NULL)
         // {
         //     return;
@@ -177,7 +185,7 @@ int wpa_cli_scan_wifi(bool *continue_flag)
     if (pf == NULL)
     {
         perror("wpa_cli_scan_wifi open fail !\n\r");
-        return -1;
+        goto scan_done;
     }
     char tmp_buffer[1024 * 2] = {0};
     int scanned_index = 0;
@@ -199,7 +207,11 @@ int wpa_cli_scan_wifi(bool *continue_flag)
         scanned_index++;
     }
     pclose(pf);
-    return scanned_wifi_index;
+    result = scanned_wifi_index;
+
+scan_done:
+    wifi_scan_finish(&wifi_scan_running);
+    return result;
 }
 
 bool get_scanned_wifi_info(int index, wifi_info *info)
@@ -401,7 +413,12 @@ int wpa_cli_check_connect_status(void)
 int wifi_connection_status_sucess(void)
 {
     int result = 0;
-    FILE *pf = popen("wpa_cli -i wlan0 status &", "r");
+    if (access("/var/run/wpa_supplicant/wlan0", F_OK) != 0)
+    {
+        return 0;
+    }
+
+    FILE *pf = popen("wpa_cli -i wlan0 status 2>/dev/null", "r");
     if (pf == NULL)
     {
         perror("popen failed");
@@ -410,39 +427,11 @@ int wifi_connection_status_sucess(void)
 
     char buffer[1024 * 10] = {0};
 
-    fd_set readfds;
-    struct timeval timeout;
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
-    int fd = fileno(pf);
-    FD_ZERO(&readfds);
-    FD_SET(fd, &readfds);
-
-    while (1)
+    while (fgets(buffer, sizeof(buffer), pf) != NULL)
     {
-        int ready = select(fd + 1, &readfds, NULL, NULL, &timeout);
-
-        if (ready > 0 && FD_ISSET(fileno(pf), &readfds))
+        if (strncmp(buffer, "wpa_state=COMPLETED", 19) == 0)
         {
-            if (fgets(buffer, sizeof(buffer), pf))
-            {
-                int ret = strncmp(buffer, "wpa_state=COMPLETED", 19);
-
-                if (ret == 0)
-                {
-                    result = 1;
-                    break;
-                }
-            }
-            else
-            {
-                break;
-            }
-        }
-        else
-        {
-            // Timeout occurred
-            fprintf(stderr, "Timeout reached.\n");
+            result = 1;
             break;
         }
     }
@@ -450,6 +439,109 @@ int wifi_connection_status_sucess(void)
     pclose(pf);
 
     return result;
+}
+
+typedef struct
+{
+    unsigned int generation;
+} wifi_connection_worker_arg;
+
+static volatile int wifi_connection_check_result = WIFI_CONNECTION_CHECK_IDLE;
+static volatile bool wifi_connection_check_running = false;
+static volatile unsigned int wifi_connection_check_generation = 0;
+
+static void restore_saved_wifi_config(void)
+{
+    system("killall wpa_supplicant");
+    system("killall udhcpc");
+    system("rm -rf /tmp/wpa_supplicant.conf");
+
+    char cmd[128] = {0};
+    snprintf(cmd, sizeof(cmd), "wpa_supplicant -Dnl80211 -i wlan0 -c %s -B", WPA_SUPPLICANT_PATH);
+    system(cmd);
+    system("udhcpc -i wlan0 -n 4 -R &");
+}
+
+static void *wifi_connection_worker(void *arg)
+{
+    wifi_connection_worker_arg *worker_arg = (wifi_connection_worker_arg *)arg;
+    unsigned int generation = worker_arg->generation;
+    free(worker_arg);
+
+    for (int attempt = 0; attempt < 30; ++attempt)
+    {
+        if (!wifi_connection_check_running || generation != wifi_connection_check_generation)
+        {
+            ak_thread_exit();
+            return NULL;
+        }
+
+        if (wifi_connection_status_sucess() == 1)
+        {
+            system("\\cp -rf /tmp/wpa_supplicant.conf " WPA_SUPPLICANT_PATH);
+            system("sync");
+            wifi_connection_check_result = WIFI_CONNECTION_CHECK_SUCCESS;
+            wifi_connection_check_running = false;
+            ak_thread_exit();
+            return NULL;
+        }
+
+        ak_sleep_ms(500);
+    }
+
+    if (generation == wifi_connection_check_generation)
+    {
+        restore_saved_wifi_config();
+        wifi_connection_check_result = WIFI_CONNECTION_CHECK_FAIL;
+        wifi_connection_check_running = false;
+    }
+
+    ak_thread_exit();
+    return NULL;
+}
+
+bool wifi_connection_check_start(void)
+{
+    if (wifi_connection_check_running)
+    {
+        return false;
+    }
+
+    wifi_connection_worker_arg *worker_arg = malloc(sizeof(*worker_arg));
+    if (worker_arg == NULL)
+    {
+        wifi_connection_check_result = WIFI_CONNECTION_CHECK_FAIL;
+        return false;
+    }
+
+    wifi_connection_check_generation++;
+    worker_arg->generation = wifi_connection_check_generation;
+    wifi_connection_check_result = WIFI_CONNECTION_CHECK_RUNNING;
+    wifi_connection_check_running = true;
+
+    ak_pthread_t thread_id;
+    if (ak_thread_create(&thread_id, wifi_connection_worker, worker_arg,
+                         ANYKA_THREAD_NORMAL_STACK_SIZE, -1) != 0)
+    {
+        free(worker_arg);
+        wifi_connection_check_running = false;
+        wifi_connection_check_result = WIFI_CONNECTION_CHECK_FAIL;
+        return false;
+    }
+    ak_thread_detach(thread_id);
+    return true;
+}
+
+int wifi_connection_check_state(void)
+{
+    return wifi_connection_check_result;
+}
+
+void wifi_connection_check_cancel(void)
+{
+    wifi_connection_check_generation++;
+    wifi_connection_check_running = false;
+    wifi_connection_check_result = WIFI_CONNECTION_CHECK_IDLE;
 }
 
 int current_wlan_signal_level(void)
@@ -485,6 +577,11 @@ static bool wlan_turn_on = false;
 void get_linked_wifi_info(linked_info *info)
 {
     *info = wifi_wlan0;
+}
+
+void clear_linked_wifi_info(void)
+{
+    memset(&wifi_wlan0, 0, sizeof(wifi_wlan0));
 }
 /*
 static bool wlan_udhcpc_status(bool *continue_flag){
@@ -563,7 +660,6 @@ static void *check_wlan_task(void *arg)
                 system("udhcpc -i wlan0 -n 4 -R &");
                 udhcpc_cnt = 50;
                 run_once_flag = true;
-                printf("udhcpc -i wlan0 -n 4 -R & !\n\r");
             }
             else if (connected_info_active == false)
             {
@@ -633,7 +729,6 @@ static void *check_wlan_task(void *arg)
         }
         ak_sleep_ms(200);
     }
-    printf("!!!!!--- DA MIE ----!!!!!\n\r");
     *run = false;
     ak_thread_exit();
     return NULL;
@@ -696,12 +791,134 @@ void turn_on_walan_reconnect(void)
     // update_wifi_list();
 }
 
+static bool disable_wlan_networks_in_config(void)
+{
+    char temp_path[256] = {0};
+    char config_line[256] = {0};
+    FILE *source_file;
+    FILE *temp_file;
+    bool in_network = false;
+    bool disabled_written = false;
+    int disabled_network_count = 0;
+
+    snprintf(temp_path, sizeof(temp_path), "%s.tmp", WPA_SUPPLICANT_PATH);
+    source_file = fopen(WPA_SUPPLICANT_PATH, "r");
+    if (source_file == NULL)
+    {
+        printf("WiFi config open failed: %s\n", WPA_SUPPLICANT_PATH);
+        return false;
+    }
+
+    temp_file = fopen(temp_path, "w");
+    if (temp_file == NULL)
+    {
+        printf("WiFi temp config open failed: %s\n", temp_path);
+        fclose(source_file);
+        return false;
+    }
+
+    while (fgets(config_line, sizeof(config_line), source_file) != NULL)
+    {
+        if (strncmp(config_line, "network={", strlen("network={")) == 0)
+        {
+            in_network = true;
+            disabled_written = false;
+        }
+        else if (in_network && strstr(config_line, "disabled=") != NULL)
+        {
+            fputs("\tdisabled=1\n", temp_file);
+            disabled_written = true;
+            continue;
+        }
+        else if (in_network && config_line[0] == '}')
+        {
+            if (!disabled_written)
+            {
+                fputs("\tdisabled=1\n", temp_file);
+                disabled_network_count++;
+            }
+            in_network = false;
+        }
+
+        fputs(config_line, temp_file);
+    }
+
+    fflush(temp_file);
+    fsync(fileno(temp_file));
+    fclose(temp_file);
+    fclose(source_file);
+
+    if (rename(temp_path, WPA_SUPPLICANT_PATH) != 0)
+    {
+        printf("WiFi config rename failed: %s\n", WPA_SUPPLICANT_PATH);
+        unlink(temp_path);
+        return false;
+    }
+
+    system("sync");
+    printf("WiFi config force-disabled network count: %d\n", disabled_network_count);
+    return true;
+}
+
+static void disable_wlan_networks_and_save(void)
+{
+    FILE *network_file;
+    char network_id[32] = {0};
+    char command[128] = {0};
+    int disabled_network_count = 0;
+
+    system("wpa_cli -i wlan0 disable_network all");
+
+    network_file = popen("wpa_cli -i wlan0 list_networks | awk '$1 ~ /^[0-9]+$/ {print $1}'", "r");
+    if (network_file != NULL)
+    {
+        while (fgets(network_id, sizeof(network_id), network_file) != NULL)
+        {
+            network_id[strcspn(network_id, "\r\n")] = '\0';
+            if (network_id[0] == '\0')
+            {
+                continue;
+            }
+
+            snprintf(command, sizeof(command), "wpa_cli -i wlan0 set_network %s disabled 1", network_id);
+            system(command);
+            disabled_network_count++;
+        }
+        pclose(network_file);
+    }
+
+    system("wpa_cli -i wlan0 save_config");
+    disable_wlan_networks_in_config();
+
+    network_file = fopen(WPA_SUPPLICANT_PATH, "r");
+    if (network_file == NULL)
+    {
+        printf("WiFi config open failed after disable: %s\n", WPA_SUPPLICANT_PATH);
+        return;
+    }
+
+    bool disabled_saved = false;
+    char config_line[256] = {0};
+    while (fgets(config_line, sizeof(config_line), network_file) != NULL)
+    {
+        if (strstr(config_line, "disabled=1") != NULL)
+        {
+            disabled_saved = true;
+            break;
+        }
+    }
+    fclose(network_file);
+
+    printf("WiFi disabled network count: %d, config saved: %d\n", disabled_network_count, disabled_saved ? 1 : 0);
+}
+
 void turn_off_wlan_break(void)
-{ // 关闭wifi连接
-
-    // system("wpa_cli -i wlan0 disable_network 0");
-
+{
+    wlan_turn_on = false;
+    system("killall udhcpc");
+    disable_wlan_networks_and_save();
     system("wpa_cli -i wlan0 disconnect");
+    clear_linked_wifi_info();
     printf("@@@@@@@@@@@wlan0 down!\n");
 }
 
@@ -709,6 +926,10 @@ void CloseConnectingWifi(void)
 {
 
     system("ifconfig wlan0 down");
+    //	system("killall wpa_supplicant");
+    //	system("killall udhcpc");
+    //	system("killall udhcpd");
+    //	system("killall hostapd");
 }
 
 void StartConnectingWifi(void)

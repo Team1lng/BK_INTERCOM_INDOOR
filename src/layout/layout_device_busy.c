@@ -13,7 +13,7 @@ static lv_task_t *motion_busy_detect_task_t = NULL;
 static lv_obj_t *msg_dev_busy_t = NULL;
 static void motion_busy_detect_task(lv_task_t *task_t)
 {
-    if(!get_outdoor_talk_state(MON_CH_DOOR_1) && !get_outdoor_talk_state(MON_CH_DOOR_2) && !tuya_monitor_state_get() && (tuya_online_clinet_num_get() == 0))
+    if(!get_outdoor_talk_state(MON_CH_DOOR_1) && !get_outdoor_talk_state(MON_CH_DOOR_2) && !tuya_monitor_state_get() && (tuya_client_num_get() == 0))
     {
         Debug("\n\n\n\n");
         goto_layout(pLAYOUT(standby));
